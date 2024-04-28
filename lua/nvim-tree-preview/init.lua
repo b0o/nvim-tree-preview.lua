@@ -114,7 +114,10 @@ function M.unwatch()
     vim.api.nvim_del_augroup_by_id(M.watch_augroup)
     M.watch_augroup = nil
   end
-  M.close()
+  if M.instance then
+    M.instance:close()
+    M.instance:set_watched(false)
+  end
 end
 
 return M
