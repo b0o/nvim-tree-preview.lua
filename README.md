@@ -50,7 +50,7 @@ preview.setup {
 }
 ```
 
-In your nvim-tree `on_attach` function (see `:help nvim-tree.on_attach`):
+In your nvim-tree `on_attach` function (see [`:help nvim-tree.on_attach`](https://github.com/nvim-tree/nvim-tree.lua/blob/5a18b9827491aa1aea710bc9b85c6b63ed0dad14/doc/nvim-tree-lua.txt#L644)):
 
 ```lua
 vim.keymap.set('n', 'P', preview.watch, opts 'Preview (Watch)')
