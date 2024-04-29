@@ -124,6 +124,7 @@ function Preview:setup_keymaps()
       return noop
     end
     return function()
+      self.manager.unwatch { close = false }
       self:close { focus_tree = false }
       vim.schedule(function()
         api.node.open[mode]()
