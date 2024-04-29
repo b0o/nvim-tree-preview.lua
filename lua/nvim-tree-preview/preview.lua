@@ -60,6 +60,7 @@ function Preview:close(opts)
   if self.augroup ~= nil then
     vim.api.nvim_del_augroup_by_id(self.augroup)
   end
+  self:unload_buf()
   self.augroup = nil
   self.preview_win = nil
   self.preview_buf = nil
@@ -264,10 +265,17 @@ function Preview:get_win()
   return win
 end
 
+function Preview:unload_buf()
+  if self.preview_buf and vim.api.nvim_buf_is_valid(self.preview_buf) then
+    vim.api.nvim_buf_delete(self.preview_buf, { force = true })
+  end
+  self.preview_buf = nil
+end
+
 ---@param node NvimTreeNode
 function Preview:open(node)
   if not self.tree_node or self.tree_node.absolute_path ~= node.absolute_path then
-    self.preview_buf = nil
+    self:unload_buf()
   end
   self.tree_win = vim.api.nvim_get_current_win()
   self.tree_buf = vim.api.nvim_get_current_buf()
