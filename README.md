@@ -2,7 +2,7 @@
 
 Preview [NvimTree](https://github.com/nvim-tree/nvim-tree.lua/) files in a floating window.
 
-https://gist.github.com/assets/21299126/2b58931d-67ca-468d-8807-51a629a81def
+https://github.com/b0o/nvim-tree-preview.lua/assets/21299126/239dd210-7c03-4637-8dce-9999da658396
 
 Depends on [plenary.nvim](https://github.com/nvim-lua/plenary.nvim).
 
