@@ -4,8 +4,6 @@ Preview [NvimTree](https://github.com/nvim-tree/nvim-tree.lua/) files in a float
 
 https://github.com/b0o/nvim-tree-preview.lua/assets/21299126/239dd210-7c03-4637-8dce-9999da658396
 
-Depends on [plenary.nvim](https://github.com/nvim-lua/plenary.nvim).
-
 ## Installation
 
 Lazy.nvim:
