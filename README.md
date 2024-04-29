@@ -19,6 +19,15 @@ Lazy.nvim:
 },
 ```
 
+NOTE: Depends on [plenary.nvim](https://github.com/nvim-lua/plenary.nvim). You likely already have this installed, if not:
+
+```lua
+{
+  'nvim-lua/plenary.nvim',
+},
+```
+
+
 Configuration:
 
 ```lua
