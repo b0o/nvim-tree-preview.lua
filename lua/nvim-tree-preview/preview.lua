@@ -162,25 +162,53 @@ local function read_directory(node)
   if not content or #content == 0 then
     return { 'Error reading directory' }
   end
-  local files = vim.tbl_map(function(name)
-    return {
-      name = name,
-      is_dir = vim.fn.isdirectory(node.absolute_path .. '/' .. name) == 1,
-    }
-  end, content)
+  if vim.fn.has("nvim-0.10") then
+    local files = vim
+      .iter(content)
+      :map(function(name)
+        return {
+          name = name,
+          is_dir = vim.fn.isdirectory(node.absolute_path .. '/' .. name) == 1,
+        }
+      end)
+    :totable()
+  elseif vim.fn.has("nvim-0.9") then
+    local files = vim.tbl_map(function(name)
+      return {
+        name = name,
+        is_dir = vim.fn.isdirectory(node.absolute_path .. '/' .. name) == 1,
+      }
+    end, content)
+  end
   table.sort(files, function(a, b)
     if a.is_dir ~= b.is_dir then
       return a.is_dir
     end
     return a.name < b.name
   end)
-  content = { '  ' .. node.name .. '/' }
-  for i, file in ipairs(files) do
-    local prefix = i == #files and ' └ ' or ' │ '
-    if file.is_dir then
-      table.insert(content, prefix .. file.name .. '/')
-    else
-      table.insert(content, prefix .. file.name)
+  if vim.fn.has("0.10") then
+    content = {
+      '  ' .. node.name .. '/',
+      unpack(vim
+        .iter(ipairs(files))
+        :map(function(i, file)
+          local prefix = i == #content and ' └ ' or ' │ '
+          if file.is_dir then
+            return prefix .. file.name .. '/'
+          end
+        return prefix .. file.name
+      end)
+      :totable()),
+    }
+  elseif vim.fn.has("0.9") then
+    content = { '  ' .. node.name .. '/' }
+    for i, file in ipairs(files) do
+      local prefix = i == #files and ' └ ' or ' │ '
+      if file.is_dir then
+        table.insert(content, prefix .. file.name .. '/')
+      else
+        table.insert(content, prefix .. file.name)
+      end
     end
   end
   return content
