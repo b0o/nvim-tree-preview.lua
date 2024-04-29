@@ -26,15 +26,25 @@ local preview = require'nvim-tree-preview'
 
 -- Default config:
 preview.setup {
-  -- Keymaps for the preview window (does not apply to the tree window)
+  -- Keymaps for the preview window (does not apply to the tree window).
   -- Keymaps can be a string (vimscript command), a function, or a table.
-  -- If a table, it must contain either an 'action' or 'open' key.
-  -- Valid actions are 'close' and 'toggle_focus'.
-  -- Valid open modes are 'edit', 'tab', 'vertical', and 'horizontal'.
+  --
+  -- If a table, it must contain either an 'action' or 'open' key:
+  --
+  -- Actions:
+  --   { action = 'close', unwatch? = false, focus_tree? = true }
+  --   { action = 'toggle_focus' }
+  --
+  -- Open modes:
+  --   { open = 'edit' }
+  --   { open = 'tab' }
+  --   { open = 'vertical' }
+  --   { open = 'horizontal' }
+  --
   -- To disable a default keymap, set it to false.
-  -- All keymaps are set in normal mode.
+  -- All keymaps are set in normal mode. Other modes are not currently supported.
   keymaps = {
-    ['<Esc>'] = { action = 'close' },
+    ['<Esc>'] = { action = 'close', unwatch = true },
     ['<Tab>'] = { action = 'toggle_focus' },
     ['<CR>'] = { open = 'edit' },
     ['<C-t>'] = { open = 'tab' },
