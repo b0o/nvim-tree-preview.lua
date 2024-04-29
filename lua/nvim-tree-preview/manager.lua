@@ -2,7 +2,7 @@ local api = require 'nvim-tree.api'
 
 local Preview = require 'nvim-tree-preview.preview'
 
----@class PreviewModule
+---@class PreviewManager
 ---@field instance? Preview
 ---@field watch_augroup? number
 ---@field watch_tree_buf? number
@@ -22,7 +22,7 @@ end
 function M.node(node, opts)
   opts = vim.tbl_extend('force', { toggle_focus = false }, opts or {})
   if not M.instance then
-    M.instance = Preview.create()
+    M.instance = Preview.create(M)
   end
   if not node.type then
     M.instance:close()
@@ -76,7 +76,6 @@ function M.watch()
   if not M.instance or not M.instance:is_open() then
     M.node_under_cursor()
   end
-  M.instance:set_watched(true)
   vim.api.nvim_create_autocmd({ 'CursorMoved' }, {
     group = M.watch_augroup,
     buffer = 0,
@@ -109,14 +108,15 @@ function M.watch()
   })
 end
 
-function M.unwatch()
+---@param opts? {close?: boolean}
+function M.unwatch(opts)
+  opts = vim.tbl_extend('force', { close = true }, opts or {})
   if M.watch_augroup then
     vim.api.nvim_del_augroup_by_id(M.watch_augroup)
     M.watch_augroup = nil
   end
-  if M.instance then
+  if opts.close and M.instance then
     M.instance:close()
-    M.instance:set_watched(false)
   end
 end
 

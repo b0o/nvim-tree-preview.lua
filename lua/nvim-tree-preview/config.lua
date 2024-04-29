@@ -1,9 +1,8 @@
----@alias PreviewKeymapAction 'close'|'toggle_focus'
-
----@alias PreviewKeymapOpenAction 'edit'|'tab'|'vertical'|'horizontal'
-
----@alias PreviewKeymap string|function|{action: PreviewKeymapAction}|{open: PreviewKeymapOpenAction}
-
+---@alias PreviewKeymapOpenDirection 'edit'|'tab'|'vertical'|'horizontal'
+---@alias PreviewKeymapActionClose {action: 'close', focus_tree?: boolean, unwatch?: boolean}
+---@alias PreviewKeymapActionToggleFocus {action: 'toggle_focus'}
+---@alias PreviewKeymapAction PreviewKeymapActionClose|PreviewKeymapActionToggleFocus
+---@alias PreviewKeymap string|function|PreviewKeymapAction|{open: PreviewKeymapOpenDirection}
 ---@alias PreviewKeymapSpec {[1]: string, [2]: PreviewKeymap}
 
 ---@class PreviewConfig
@@ -19,7 +18,7 @@
 local M = {
   config = {
     keymaps = {
-      ['<Esc>'] = { action = 'close' },
+      ['<Esc>'] = { action = 'close', unwatch = true },
       ['<Tab>'] = { action = 'toggle_focus' },
       ['<CR>'] = { open = 'edit' },
       ['<C-t>'] = { open = 'tab' },

@@ -13,24 +13,25 @@ local config = require 'nvim-tree-preview.config'
 ---@field type 'file' | 'directory' | 'link'
 
 ---@class Preview
+---@field manager PreviewManager
 ---@field augroup number?
 ---@field preview_win number?
 ---@field preview_buf number?
 ---@field tree_win number?
 ---@field tree_buf number?
 ---@field tree_node NvimTreeNode?
----@field is_watched boolean
 local Preview = {}
 
-Preview.create = function()
+---@param manager PreviewManager
+Preview.create = function(manager)
   return setmetatable({
+    manager = manager,
     augroup = nil,
     preview_win = nil,
     preview_buf = nil,
     tree_win = nil,
     tree_buf = nil,
     tree_node = nil,
-    is_watched = false,
   }, { __index = Preview })
 end
 
@@ -38,14 +39,21 @@ function Preview:is_open()
   return self.preview_win ~= nil
 end
 
----@param opts? {focus_tree?: boolean}
+function Preview:is_focused()
+  return self:is_open() and vim.api.nvim_get_current_win() == self.preview_win
+end
+
+---@param opts? {focus_tree?: boolean, unwatch?: boolean}
 function Preview:close(opts)
-  opts = vim.tbl_extend('force', { focus_tree = true }, opts or {})
+  opts = vim.tbl_extend('force', { focus_tree = true, unwatch = false }, opts or {})
+  if opts.unwatch then
+    self.manager.unwatch { close = false }
+  end
   if self.preview_win ~= nil then
     if vim.api.nvim_win_is_valid(self.preview_win) then
       vim.api.nvim_win_close(self.preview_win, true)
     end
-    if opts.focus_tree and self.tree_win then
+    if opts.focus_tree and self.tree_win and self:is_focused() then
       vim.api.nvim_set_current_win(self.tree_win)
     end
   end
@@ -74,12 +82,14 @@ function Preview:setup_autocmds()
     group = self.augroup,
     buffer = self.tree_buf,
     callback = function()
-      if self.is_watched then
-        -- Re-use the preview window if it's already open
+      if self.manager.is_watching() then
+        -- Do not close the preview window if watching, so that
+        -- future CursorMoved events can re-use the same window.
         return
       end
       local ok, node = pcall(api.tree.get_node_under_cursor)
-      if not ok or not node or node.absolute_path ~= self.tree_node.absolute_path then
+      local self_node = self.tree_node
+      if not ok or not node or not self_node or node.absolute_path ~= self_node.absolute_path then
         self:close()
       end
     end,
@@ -91,25 +101,22 @@ local function noop()
 end
 
 function Preview:setup_keymaps()
-  local opts = { buffer = self.preview_buf, noremap = true, silent = true }
-
   ---@param key PreviewKeymapAction
-  ---@param ... any
+  ---@param opts? any
   ---@return function
-  local action = function(key, ...)
+  local action = function(key, opts)
     if not vim.tbl_contains({ 'close', 'toggle_focus' }, key) then
       vim.notify('nvim-tree preview: Invalid keymap action ' .. key, vim.log.levels.ERROR)
       return noop
     end
-    local args = { ... }
     return function()
       vim.schedule(function()
-        self[key](self, unpack(args))
+        self[key](self, opts)
       end)
     end
   end
 
-  ---@param mode PreviewKeymapOpenAction
+  ---@param mode PreviewKeymapOpenDirection
   ---@return function
   local open = function(mode)
     if not vim.tbl_contains({ 'edit', 'tab', 'vertical', 'horizontal' }, mode) then
@@ -117,23 +124,24 @@ function Preview:setup_keymaps()
       return noop
     end
     return function()
+      self:close { focus_tree = false }
       vim.schedule(function()
-        self:close { focus_tree = true }
         api.node.open[mode]()
       end)
     end
   end
 
+  local map_opts = { buffer = self.preview_buf, noremap = true, silent = true }
   for key, spec in pairs(config.keymaps) do
     if type(spec) == 'string' or type(spec) == 'function' then
-      vim.keymap.set('n', key, spec, opts)
+      vim.keymap.set('n', key, spec, map_opts)
     elseif type(spec) == 'table' then
       if spec.action then
-        vim.keymap.set('n', key, action(spec.action), opts)
+        vim.keymap.set('n', key, action(spec.action, spec), map_opts)
       elseif spec.open then
         local open_mode = spec.open
-        ---@cast open_mode PreviewKeymapOpenAction
-        vim.keymap.set('n', key, open(open_mode), opts)
+        ---@cast open_mode PreviewKeymapOpenDirection
+        vim.keymap.set('n', key, open(open_mode), map_opts)
       else
         vim.notify('nvim-tree preview: Invalid keymap spec for ' .. key, vim.log.levels.ERROR)
       end
@@ -311,11 +319,6 @@ function Preview:toggle_focus()
       end
     end)
   end
-end
-
----@param watched boolean
-function Preview:set_watched(watched)
-  self.is_watched = watched
 end
 
 return Preview
