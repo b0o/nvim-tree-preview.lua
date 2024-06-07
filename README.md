@@ -37,6 +37,8 @@ require('nvim-tree').setup {
       return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
     end
 
+    local preview = require('nvim-tree-preview')
+
     vim.keymap.set('n', 'P', preview.watch, opts 'Preview (Watch)')
     vim.keymap.set('n', '<Esc>', preview.unwatch, opts 'Close Preview/Unwatch')
 
@@ -61,10 +63,8 @@ require('nvim-tree').setup {
 Optionally, you can call nvim-tree-preview's `setup()` function to change the default configuration:
 
 ```lua
-local preview = require'nvim-tree-preview'
-
 -- Default config:
-preview.setup {
+require('nvim-tree-preview').setup {
   -- Keymaps for the preview window (does not apply to the tree window).
   -- Keymaps can be a string (vimscript command), a function, or a table.
   --
