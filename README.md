@@ -122,6 +122,48 @@ require('nvim-tree').setup {
 }
 ```
 
+## API
+
+nvim-tree-preview exposes a few functions for programmatically interacting with the preview window.
+
+```lua
+local preview = require 'nvim-tree-preview'
+
+---Open a preview window for the given nvim-tree node.
+---If toggle_focus is true and a preview window is already open for the node,
+---the preview window will be focused.
+---@param node NvimTreeNode
+---@param opts? {toggle_focus?: boolean (default: false)}
+preview.node(node, opts)
+
+---Preview the node under the cursor in the nvim-tree window.
+---If toggle_focus is true and a preview window is already open for the node,
+---the preview window will be focused.
+---@param opts? {toggle_focus?: boolean (default: true)}
+preview.node_under_cursor(opts)
+
+---Close the preview window.
+preview.close()
+
+---Open the preview window for the node under the cursor, and
+---watch for cursor movement in the nvim-tree window. If the cursor is moved
+---to a different node, the preview window display the content of that node.
+preview.watch()
+
+---Stop watching for cursor movement in the nvim-tree window.
+---If close is true, the preview window will be closed if it is open.
+---@param opts? {close?: boolean (default: true)}
+preview.unwatch(opts)
+
+---Returns true if a preview window is open.
+preview.is_open()
+
+---Returns true if the preview window is focused.
+preview.is_focused()
+
+---Returns true if the preview window is currently being watched.
+preview.is_watching()
+```
 
 ## Alternatives
 
