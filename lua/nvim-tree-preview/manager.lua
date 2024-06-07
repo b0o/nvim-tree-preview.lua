@@ -62,6 +62,14 @@ function M.is_watching()
   return M.watch_augroup ~= nil
 end
 
+function M.is_open()
+  return M.instance and M.instance:is_open()
+end
+
+function M.is_focused()
+  return M.instance and M.instance:is_focused()
+end
+
 function M.watch()
   if M.watch_augroup then
     M.unwatch()

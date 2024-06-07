@@ -10,8 +10,10 @@ end
 M.node = manager.node
 M.node_under_cursor = manager.node_under_cursor
 M.close = manager.close
-M.is_watching = manager.is_watching
 M.watch = manager.watch
 M.unwatch = manager.unwatch
+M.is_open = manager.is_open
+M.is_focused = manager.is_focused
+M.is_watching = manager.is_watching
 
 return M
