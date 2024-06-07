@@ -96,6 +96,7 @@ require('nvim-tree-preview').setup {
   max_height = 25,
   wrap = false, -- Whether to wrap lines in the preview window
   border = 'rounded', -- Border style for the preview window
+  zindex = 100, -- Stacking order. Increase if the preview window is shown below other windows.
 }
 ```
 

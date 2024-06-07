@@ -258,6 +258,7 @@ function Preview:get_win()
     noautocmd = true,
     focusable = false,
     border = config.border,
+    zindex = config.zindex,
   })
   local win = noautocmd(vim.api.nvim_open_win, self.preview_buf, false, opts)
   vim.wo[win].wrap = config.wrap

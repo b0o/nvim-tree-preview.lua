@@ -13,6 +13,7 @@
 ---@field max_height? number
 ---@field wrap? boolean
 ---@field border? any
+---@field zindex? number
 
 ---@type {config: PreviewConfig}
 local M = {
@@ -31,6 +32,7 @@ local M = {
     max_height = 25,
     wrap = false,
     border = 'rounded',
+    zindex = 100,
   },
 }
 
@@ -43,6 +45,7 @@ local function setup(config)
   assert(M.config.min_height > 0, 'min_height must be greater than 0')
   assert(M.config.max_width > 0, 'max_width must be greater than 0')
   assert(M.config.max_height > 0, 'max_height must be greater than 0')
+  assert(M.config.zindex > 0, 'zindex must be greater than 0')
 end
 
 return setmetatable({}, {
