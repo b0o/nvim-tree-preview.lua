@@ -1,5 +1,6 @@
 local Path = require 'plenary.path'
 local api = require 'nvim-tree.api'
+local util = require 'nvim-tree-preview.util'
 
 local config = require 'nvim-tree-preview.config'
 
@@ -135,8 +136,16 @@ function Preview:setup_keymaps()
 
   local map_opts = { buffer = self.preview_buf, noremap = true, silent = true }
   for key, spec in pairs(config.keymaps) do
-    if type(spec) == 'string' or type(spec) == 'function' then
+    if type(spec) == 'string' then
       vim.keymap.set('n', key, spec, map_opts)
+    elseif util.is_callable(spec) then
+      ---@type PreviewKeymapFnParams
+      local params = {
+        node = self.tree_node,
+      }
+      vim.keymap.set('n', key, function()
+        spec(params)
+      end, map_opts)
     elseif type(spec) == 'table' then
       if spec.action then
         vim.keymap.set('n', key, action(spec.action, spec), map_opts)
