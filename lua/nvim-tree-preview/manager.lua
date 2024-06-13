@@ -9,11 +9,6 @@ local M = {
   tree_buf = nil,
 }
 
----@param config? PreviewConfig
-function M.setup(config)
-  require('nvim-tree-preview.config').setup(config or {})
-end
-
 ---@param node NvimTreeNode
 ---@param opts? {toggle_focus?: boolean}
 function M.node(node, opts)
