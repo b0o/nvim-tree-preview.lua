@@ -240,6 +240,25 @@ function Preview:load_buf_content()
   vim.bo[buf].modifiable = false
 end
 
+function Preview:update_title()
+  if not self.tree_node or not config.show_title then
+    return
+  end
+  local name = self.tree_node.name .. (self.tree_node.type == 'directory' and '/' or '')
+  local title = string.format(config.title_format or ' %s ', name)
+  local pos_y, pos_x = unpack(vim.split(config.title_pos, '-'))
+  ---@type vim.api.keyset.win_config
+  local opts = {}
+  if pos_y == 'top' then
+    opts.title_pos = pos_x
+    opts.title = title
+  else
+    opts.footer_pos = pos_x
+    opts.footer = title
+  end
+  vim.api.nvim_win_set_config(self.preview_win, opts)
+end
+
 function Preview:get_win()
   local width = vim.api.nvim_get_option_value('columns', {})
   local height = vim.api.nvim_get_option_value('lines', {})
@@ -306,6 +325,7 @@ function Preview:open(node)
     vim.schedule(function()
       self:setup_autocmds()
       self:setup_keymaps()
+      self:update_title()
       self:load_buf_content()
     end)
   end

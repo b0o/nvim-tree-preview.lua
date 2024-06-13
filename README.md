@@ -97,6 +97,9 @@ require('nvim-tree-preview').setup {
   wrap = false, -- Whether to wrap lines in the preview window
   border = 'rounded', -- Border style for the preview window
   zindex = 100, -- Stacking order. Increase if the preview window is shown below other windows.
+  show_title = true, -- Whether to show the file name as the title of the preview window
+  title_pos = 'top-left', -- top-left|top-center|top-right|bottom-left|bottom-center|bottom-right
+  title_format = ' %s ',
 }
 ```
 

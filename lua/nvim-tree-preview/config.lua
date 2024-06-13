@@ -14,6 +14,9 @@
 ---@field wrap? boolean
 ---@field border? any
 ---@field zindex? number
+---@field show_title? boolean
+---@field title_pos? 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-center'|'bottom-right'
+---@field title_format? string
 
 ---@type {config: PreviewConfig}
 local M = {
@@ -33,6 +36,9 @@ local M = {
     wrap = false,
     border = 'rounded',
     zindex = 100,
+    show_title = true,
+    title_pos = 'top-center',
+    title_format = ' %s ',
   },
 }
 
@@ -46,6 +52,17 @@ local function setup(config)
   assert(M.config.max_width > 0, 'max_width must be greater than 0')
   assert(M.config.max_height > 0, 'max_height must be greater than 0')
   assert(M.config.zindex > 0, 'zindex must be greater than 0')
+  assert(
+    ({
+      'top-left',
+      'top-center',
+      'top-right',
+      'bottom-left',
+      'bottom-center',
+      'bottom-right',
+    })[M.config.title_pos],
+    'title_pos must be one of top-left, top-center, top-right, bottom-left, bottom-center, bottom-right'
+  )
 end
 
 return setmetatable({}, {
