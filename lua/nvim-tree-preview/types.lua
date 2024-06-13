@@ -1,6 +1,3 @@
----@class NvimTreeRootNode
----@field name ".."
-
 ---@class NvimTreeNode
 ---@field absolute_path string
 ---@field executable boolean
@@ -27,22 +24,24 @@
 ---@alias PreviewKeymapSpec {[1]: string, [2]: PreviewKeymap}
 
 ---@class PreviewConfig
----@field keymaps? Map<string, PreviewKeymap>
----@field min_width? number
----@field min_height? number
----@field max_width? number
----@field max_height? number
----@field wrap? boolean
----@field border? any
----@field zindex? number
----@field show_title? boolean
----@field title_pos? 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-center'|'bottom-right'
----@field title_format? string
+---@field keymaps Map<string, PreviewKeymap>
+---@field min_width number
+---@field min_height number
+---@field max_width number
+---@field max_height number
+---@field wrap boolean
+---@field border any
+---@field zindex number
+---@field show_title boolean
+---@field title_pos 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-center'|'bottom-right'
+---@field title_format string
+
+---@class PreviewConfigSetup: PreviewConfig
 
 ---@alias PreviewKeymapFn fun(params: PreviewKeymapFnParams)
 
 ---@class PreviewKeymapFnParams
----@field node NvimTreeNode|NvimTreeRootNode
+---@field node NvimTreeNode
 
 ---@class PreviewManager
 ---@field instance? Preview

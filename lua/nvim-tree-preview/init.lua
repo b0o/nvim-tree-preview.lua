@@ -2,8 +2,9 @@ local manager = require 'nvim-tree-preview.manager'
 
 local M = {}
 
----@param config? PreviewConfig
+---@param config? PreviewConfigSetup
 function M.setup(config)
+  ---@diagnostic disable-next-line: undefined-field
   require('nvim-tree-preview.config').setup(config or {})
 end
 

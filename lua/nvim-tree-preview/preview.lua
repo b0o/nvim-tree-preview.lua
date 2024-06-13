@@ -1,7 +1,7 @@
 local Path = require 'plenary.path'
 local api = require 'nvim-tree.api'
-local util = require 'nvim-tree-preview.util'
 
+local util = require 'nvim-tree-preview.util'
 local config = require 'nvim-tree-preview.config'
 
 ---@class Preview
@@ -181,6 +181,7 @@ end
 
 local noautocmd = function(cb, ...)
   local eventignore = vim.opt.eventignore
+  ---@diagnostic disable-next-line: undefined-field
   vim.opt.eventignore:append 'BufEnter,BufWinEnter,BufAdd,BufNew,BufCreate,BufReadPost'
   local res = cb(...)
   vim.opt.eventignore = eventignore

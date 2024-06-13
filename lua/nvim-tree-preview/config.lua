@@ -22,9 +22,7 @@ local M = {
   },
 }
 
----@class PreviewConfigTable: PreviewConfig
-
----@param config? PreviewConfigTable
+---@param config? PreviewConfigSetup
 local function setup(config)
   config = config or {}
   M.config = vim.tbl_deep_extend('force', M.config, config)
@@ -56,4 +54,4 @@ return setmetatable({}, {
     end
     return M.config[k]
   end,
-})
+}) --[[@as PreviewConfig]]
