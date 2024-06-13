@@ -63,6 +63,7 @@ local function setup(config)
     })[M.config.title_pos],
     'title_pos must be one of top-left, top-center, top-right, bottom-left, bottom-center, bottom-right'
   )
+  assert(type(M.config.title_format) == 'string', 'title_format must be a string')
 end
 
 return setmetatable({}, {
