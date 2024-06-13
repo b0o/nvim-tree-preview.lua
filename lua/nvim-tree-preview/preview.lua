@@ -4,23 +4,7 @@ local util = require 'nvim-tree-preview.util'
 
 local config = require 'nvim-tree-preview.config'
 
----@class NvimTreeNode
----@field absolute_path string
----@field executable boolean
----@field extension string
----@field filetype string
----@field link_to string
----@field name string
----@field type 'file' | 'directory' | 'link'
-
 ---@class Preview
----@field manager PreviewManager
----@field augroup number?
----@field preview_win number?
----@field preview_buf number?
----@field tree_win number?
----@field tree_buf number?
----@field tree_node NvimTreeNode?
 local Preview = {}
 
 ---@param manager PreviewManager

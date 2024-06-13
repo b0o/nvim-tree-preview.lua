@@ -1,23 +1,3 @@
----@alias PreviewKeymapOpenDirection 'edit'|'tab'|'vertical'|'horizontal'
----@alias PreviewKeymapActionClose {action: 'close', focus_tree?: boolean, unwatch?: boolean}
----@alias PreviewKeymapActionToggleFocus {action: 'toggle_focus'}
----@alias PreviewKeymapAction PreviewKeymapActionClose|PreviewKeymapActionToggleFocus
----@alias PreviewKeymap string|function|PreviewKeymapAction|{open: PreviewKeymapOpenDirection}
----@alias PreviewKeymapSpec {[1]: string, [2]: PreviewKeymap}
-
----@class PreviewConfig
----@field keymaps? Map<string, PreviewKeymap>
----@field min_width? number
----@field min_height? number
----@field max_width? number
----@field max_height? number
----@field wrap? boolean
----@field border? any
----@field zindex? number
----@field show_title? boolean
----@field title_pos? 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-center'|'bottom-right'
----@field title_format? string
-
 ---@type {config: PreviewConfig}
 local M = {
   config = {
@@ -42,6 +22,9 @@ local M = {
   },
 }
 
+---@class PreviewConfigTable: PreviewConfig
+
+---@param config? PreviewConfigTable
 local function setup(config)
   config = config or {}
   M.config = vim.tbl_deep_extend('force', M.config, config)

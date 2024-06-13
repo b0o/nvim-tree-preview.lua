@@ -3,9 +3,6 @@ local api = require 'nvim-tree.api'
 local Preview = require 'nvim-tree-preview.preview'
 
 ---@class PreviewManager
----@field instance? Preview
----@field watch_augroup? number
----@field watch_tree_buf? number
 local M = {
   instance = nil,
   watch_augroup = nil,
