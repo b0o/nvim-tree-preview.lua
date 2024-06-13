@@ -68,17 +68,25 @@ require('nvim-tree-preview').setup {
   -- Keymaps for the preview window (does not apply to the tree window).
   -- Keymaps can be a string (vimscript command), a function, or a table.
   --
+  -- If a function is provided:
+  --   When the keymap is invoked, the function is called.
+  --   It will be passed a single argument, which is a table of the following form:
+  --     {
+  --       node: NvimTreeNode|NvimTreeRootNode, -- The tree node under the cursor
+  --     }
+  --   See the type definitions in `lua/nvim-tree-preview/types.lua` for a description
+  --   of the fields in the table.
+  --
   -- If a table, it must contain either an 'action' or 'open' key:
+  --   Actions:
+  --     { action = 'close', unwatch? = false, focus_tree? = true }
+  --     { action = 'toggle_focus' }
   --
-  -- Actions:
-  --   { action = 'close', unwatch? = false, focus_tree? = true }
-  --   { action = 'toggle_focus' }
-  --
-  -- Open modes:
-  --   { open = 'edit' }
-  --   { open = 'tab' }
-  --   { open = 'vertical' }
-  --   { open = 'horizontal' }
+  --   Open modes:
+  --     { open = 'edit' }
+  --     { open = 'tab' }
+  --     { open = 'vertical' }
+  --     { open = 'horizontal' }
   --
   -- To disable a default keymap, set it to false.
   -- All keymaps are set in normal mode. Other modes are not currently supported.
