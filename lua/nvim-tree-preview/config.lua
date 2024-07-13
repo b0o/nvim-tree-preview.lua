@@ -34,14 +34,10 @@ local function setup(config)
   assert(M.config.max_height > 0, 'max_height must be greater than 0')
   assert(M.config.zindex > 0, 'zindex must be greater than 0')
   assert(
-    ({
-      'top-left',
-      'top-center',
-      'top-right',
-      'bottom-left',
-      'bottom-center',
-      'bottom-right',
-    })[M.config.title_pos],
+    vim.tbl_contains(
+      { 'top-left', 'top-center', 'top-right', 'bottom-left', 'bottom-center', 'bottom-right' },
+      M.config.title_pos
+    ),
     'title_pos must be one of top-left, top-center, top-right, bottom-left, bottom-center, bottom-right'
   )
   assert(type(M.config.title_format) == 'string', 'title_format must be a string')
