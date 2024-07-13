@@ -33,6 +33,13 @@ To use nvim-tree-preview, set up mappings to toggle it in your nvim-tree `on_att
 ```lua
 require('nvim-tree').setup {
   on_attach = function(bufnr)
+    local api = require('nvim-tree.api')
+
+    -- Important: When you supply an `on_attach` function, nvim-tree won't
+    -- automatically set up the default keymaps. To set up the default keymaps,
+    -- call the `default_on_attach` function. See `:help nvim-tree-quickstart-custom-mappings`.
+    api.config.mappings.default_on_attach(bufnr)
+
     local function opts(desc)
       return { desc = 'nvim-tree: ' .. desc, buffer = bufnr, noremap = true, silent = true, nowait = true }
     end
