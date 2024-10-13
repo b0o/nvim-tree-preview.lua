@@ -256,11 +256,14 @@ end
 function Preview:get_win()
   local width = vim.api.nvim_get_option_value('columns', {})
   local height = vim.api.nvim_get_option_value('lines', {})
+  local view_side = require('nvim-tree').config.view.side
+  local win_width = math.min(config.max_width, math.max(config.min_width, math.ceil(width / 2)))
   local opts = {
-    width = math.min(config.max_width, math.max(config.min_width, math.ceil(width / 2))),
+    width = win_width,
     height = math.min(config.max_height, math.max(config.min_height, math.ceil(height / 2))),
     row = math.max(0, vim.fn.screenrow() - 1),
-    col = vim.fn.winwidth(0) + 1,
+    -- if view.side is 'right', then the preview window will be on the left of nvim-tree
+    col = (view_side == 'left' and vim.fn.winwidth(0) or -win_width) - 1,
     relative = 'win',
   }
   if self.preview_win and vim.api.nvim_win_is_valid(self.preview_win) then
