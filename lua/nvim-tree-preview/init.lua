@@ -16,5 +16,6 @@ M.unwatch = manager.unwatch
 M.is_open = manager.is_open
 M.is_focused = manager.is_focused
 M.is_watching = manager.is_watching
+M.scroll = manager.scroll
 
 return M

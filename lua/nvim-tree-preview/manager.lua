@@ -62,6 +62,13 @@ function M.is_focused()
   return M.instance and M.instance:is_focused()
 end
 
+function M.scroll(delta)
+  if M.instance then
+    return M.instance:scroll(delta)
+  end
+  return false
+end
+
 function M.watch()
   if M.watch_augroup then
     M.unwatch()

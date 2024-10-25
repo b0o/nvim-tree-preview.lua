@@ -21,7 +21,7 @@ Preview.create = function(manager)
 end
 
 function Preview:is_open()
-  return self.preview_win ~= nil
+  return self.preview_win ~= nil and vim.api.nvim_win_is_valid(self.preview_win)
 end
 
 function Preview:is_focused()
@@ -253,17 +253,24 @@ function Preview:update_title()
   vim.api.nvim_win_set_config(self.preview_win, opts)
 end
 
-function Preview:get_win()
+function Preview:get_size()
   local width = vim.api.nvim_get_option_value('columns', {})
   local height = vim.api.nvim_get_option_value('lines', {})
-  local view_side = require('nvim-tree').config.view.side
-  local win_width = math.min(config.max_width, math.max(config.min_width, math.ceil(width / 2)))
-  local opts = {
-    width = win_width,
+  return {
+    width = math.min(config.max_width, math.max(config.min_width, math.ceil(width / 2))),
     height = math.min(config.max_height, math.max(config.min_height, math.ceil(height / 2))),
+  }
+end
+
+function Preview:get_win()
+  local view_side = require('nvim-tree').config.view.side
+  local size = self:get_size()
+  local opts = {
+    width = size.width,
+    height = size.height,
     row = math.max(0, vim.fn.screenrow() - 1),
     -- if view.side is 'right', then the preview window will be on the left of nvim-tree
-    col = (view_side == 'left' and vim.fn.winwidth(0) + 1 or -win_width - 3),
+    col = (view_side == 'left' and vim.fn.winwidth(0) + 1 or -size.width - 3),
     relative = 'win',
   }
   if self.preview_win and vim.api.nvim_win_is_valid(self.preview_win) then
@@ -278,6 +285,7 @@ function Preview:get_win()
   })
   local win = noautocmd(vim.api.nvim_open_win, self.preview_buf, false, opts)
   vim.wo[win].wrap = config.wrap
+  vim.wo[win].scrolloff = 0
   self.preview_win = win
   return win
 end
@@ -326,6 +334,46 @@ function Preview:open(node)
       self:load_buf_content()
     end)
   end
+end
+
+---Returns the height of the preview window's content.
+---@return number
+function Preview:win_buf_height()
+  local buf = self.preview_buf --[[ @as number ]]
+  local win = self.preview_win --[[ @as number ]]
+  if not vim.wo[win].wrap then
+    return vim.api.nvim_buf_line_count(buf)
+  end
+  local width = vim.api.nvim_win_get_width(win)
+  local lines = vim.api.nvim_buf_get_lines(buf, 0, -1, false)
+  local height = 0
+  for _, l in ipairs(lines) do
+    height = height + math.max(1, (math.ceil(vim.fn.strwidth(l) / width)))
+  end
+  return height
+end
+
+---Scrolls the preview window by the given number of lines.
+---Adapted from noice.nvim:
+---https://github.com/folke/noice.nvim/blob/df448c649ef6bc5a6/lua/noice/util/nui.lua#L238
+---@param delta number
+function Preview:scroll(delta)
+  if not self:is_open() then
+    return false
+  end
+  local win = self.preview_win --[[ @as number ]]
+  local view = vim.api.nvim_win_call(win, vim.fn.winsaveview)
+  local height = vim.api.nvim_win_get_height(win)
+  local top = view.topline
+  top = top + delta
+  top = math.max(top, 1)
+  top = math.min(top, self:win_buf_height() - height + 1)
+  vim.defer_fn(function()
+    vim.api.nvim_win_call(win, function()
+      vim.fn.winrestview { topline = top, lnum = top }
+    end)
+  end, 0)
+  return true
 end
 
 function Preview:toggle_focus()
