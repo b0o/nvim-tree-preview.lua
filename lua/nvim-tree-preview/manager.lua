@@ -9,6 +9,7 @@ local M = {
   tree_buf = nil,
 }
 
+---Open a preview window for the given nvim-tree node.
 ---@param node NvimTreeNode
 ---@param opts? {toggle_focus?: boolean}
 function M.node(node, opts)
@@ -31,6 +32,7 @@ function M.node(node, opts)
   M.instance:open(node)
 end
 
+---Open a preview window for the node under the cursor.
 ---@param opts? {toggle_focus?: boolean}
 function M.node_under_cursor(opts)
   opts = vim.tbl_extend('force', { toggle_focus = true }, opts or {})
@@ -44,24 +46,31 @@ function M.node_under_cursor(opts)
   M.node(node, opts)
 end
 
+---Close the preview window.
 function M.close()
   if M.instance then
     M.instance:close()
   end
 end
 
+---Returns true if the preview window is currently being watched.
 function M.is_watching()
   return M.watch_augroup ~= nil
 end
 
+---Returns true if a preview window is open.
 function M.is_open()
   return M.instance and M.instance:is_open()
 end
 
+---Returns true if the preview window is focused.
 function M.is_focused()
   return M.instance and M.instance:is_focused()
 end
 
+---Scrolls the preview window by the given number of lines. Use a negative number to scroll up.
+---@param delta number
+---@return boolean success true if the preview window is open and the scroll was successful.
 function M.scroll(delta)
   if M.instance then
     return M.instance:scroll(delta)
@@ -69,6 +78,9 @@ function M.scroll(delta)
   return false
 end
 
+---Open the preview window for the node under the cursor, and
+---watch for cursor movement in the nvim-tree window. If the cursor is moved
+---to a different node, the preview window display the content of that node.
 function M.watch()
   if M.watch_augroup then
     M.unwatch()
@@ -115,6 +127,8 @@ function M.watch()
   })
 end
 
+---Stop watching for cursor movement in the nvim-tree window.
+---If close is true, the preview window will be closed if it is open.
 ---@param opts? {close?: boolean}
 function M.unwatch(opts)
   opts = vim.tbl_extend('force', { close = true }, opts or {})
