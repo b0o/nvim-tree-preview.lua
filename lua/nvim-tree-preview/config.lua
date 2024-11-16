@@ -19,6 +19,8 @@ local M = {
     show_title = true,
     title_pos = 'top-center',
     title_format = ' %s ',
+    on_open = nil,
+    on_close = nil,
   },
 }
 

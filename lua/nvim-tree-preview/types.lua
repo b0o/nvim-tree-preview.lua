@@ -35,6 +35,8 @@
 ---@field show_title boolean
 ---@field title_pos 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-center'|'bottom-right'
 ---@field title_format string
+---@field on_open? fun(win: number, buf: number)
+---@field on_close? fun()
 
 ---@class PreviewConfigSetup: PreviewConfig
 

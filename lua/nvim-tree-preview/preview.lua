@@ -52,6 +52,9 @@ function Preview:close(opts)
   self.tree_win = nil
   self.tree_buf = nil
   self.tree_node = nil
+  if config.on_close then
+    config.on_close()
+  end
 end
 
 function Preview:setup_autocmds()
@@ -303,6 +306,9 @@ function Preview:get_win()
   vim.wo[win].wrap = config.wrap
   vim.wo[win].scrolloff = 0
   self.preview_win = win
+  if config.on_open then
+    config.on_open(self.preview_win, self.preview_buf)
+  end
   return win
 end
 

@@ -117,6 +117,8 @@ require('nvim-tree-preview').setup {
   show_title = true, -- Whether to show the file name as the title of the preview window
   title_pos = 'top-left', -- top-left|top-center|top-right|bottom-left|bottom-center|bottom-right
   title_format = ' %s ',
+  on_open = nil, -- fun(win: number, buf: number) called when the preview window is opened
+  on_close = nil, -- fun() called when the preview window is closed
 }
 ```
 
