@@ -423,6 +423,7 @@ function Preview:set_win_options(win)
   vim.wo[win].wrap = config.wrap
   vim.wo[win].scrolloff = 0
   vim.wo[win].number = self.tree_node.type == 'file'
+  vim.wo[win].relativenumber = false
 end
 
 ---Get the window handle for the preview window
