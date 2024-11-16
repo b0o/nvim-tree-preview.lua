@@ -188,34 +188,72 @@ function Preview:setup_keymaps()
 end
 
 ---@param node NvimTreeNode
----@return string[]
+---@return {lines: string[], hl: {group: string, line: number, col_start: number, col_end: number}[]}
 local function read_directory(node)
   local content = vim.fn.readdir(node.absolute_path)
-  if not content or #content == 0 then
-    return { 'Error reading directory' }
+  if not content then
+    return {
+      lines = { 'Error reading directory' },
+      hl = {},
+    }
   end
+
   local files = vim.tbl_map(function(name)
     return {
       name = name,
       is_dir = vim.fn.isdirectory(node.absolute_path .. '/' .. name) == 1,
     }
   end, content)
+
   table.sort(files, function(a, b)
     if a.is_dir ~= b.is_dir then
       return a.is_dir
     end
     return a.name < b.name
   end)
-  content = { '  ' .. node.name .. '/' }
+
+  local lines = { '  ' .. node.name .. '/' }
+  local highlights = {
+    -- Highlight the root directory name
+    { group = 'NvimTreeFolderName', line = 0, col_start = 2, col_end = 2 + #node.name + 1 },
+  }
+
   for i, file in ipairs(files) do
     local prefix = i == #files and ' └ ' or ' │ '
-    if file.is_dir then
-      table.insert(content, prefix .. file.name .. '/')
-    else
-      table.insert(content, prefix .. file.name)
+    local line = prefix .. file.name .. (file.is_dir and '/' or '')
+    table.insert(lines, line)
+
+    -- Calculate highlight positions
+    local name_start = #prefix
+    local name_end = name_start + #file.name + (file.is_dir and 1 or 0)
+
+    -- Add appropriate highlights
+    table.insert(highlights, {
+      group = file.is_dir and 'NvimTreeFolderName' or 'Normal',
+      line = #lines - 1,
+      col_start = name_start,
+      col_end = name_end,
+    })
+
+    -- Add tree structure highlights
+    if prefix:find '│' then
+      table.insert(highlights, {
+        group = 'NvimTreeIndentMarker',
+        line = #lines - 1,
+        col_start = 1,
+        col_end = 2,
+      })
+    elseif prefix:find '└' then
+      table.insert(highlights, {
+        group = 'NvimTreeIndentMarker',
+        line = #lines - 1,
+        col_start = 1,
+        col_end = 2,
+      })
     end
   end
-  return content
+
+  return { lines = lines, hl = highlights }
 end
 
 ---Execute a function without triggering any autocommands
@@ -257,25 +295,57 @@ end
 
 ---Load the content for the target node into the preview buffer
 function Preview:load_buf_content()
-  if not self.tree_node or not self.preview_buf then
-    return
-  end
-  if self.tree_node.type == 'file' then
-    self:load_file_content(self.tree_node.absolute_path)
+  local buf = self.preview_buf
+  local tree_node = self.tree_node
+  if not tree_node or not buf then
     return
   end
 
-  ---@type string[]?
-  local content
-  if self.tree_node.type == 'directory' then
-    content = read_directory(self.tree_node)
-  else
-    content = { self.tree_node.name .. ' → ' .. self.tree_node.link_to }
+  if tree_node.type == 'file' then
+    self:load_file_content(tree_node.absolute_path)
+    return
   end
-  local buf = self.preview_buf
+
+  ---@type {lines: string[], hl: table[]}?
+  local content
+  if tree_node.type == 'directory' then
+    content = read_directory(tree_node)
+  elseif tree_node.type == 'link' then
+    content = {
+      lines = { tree_node.name .. ' → ' .. tree_node.link_to },
+      hl = {
+        {
+          group = 'NvimTreeSymlink',
+          line = 0,
+          col_start = 0,
+          col_end = #tree_node.name + 3 + #tree_node.link_to,
+        },
+      },
+    }
+  else
+    content = {
+      lines = { tree_node.name },
+      hl = {
+        {
+          group = 'Normal',
+          line = 0,
+          col_start = 0,
+          col_end = #tree_node.name,
+        },
+      },
+    }
+  end
+
+  vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)
+
   vim.bo[buf].modifiable = true
-  vim.api.nvim_buf_set_lines(self.preview_buf, 0, -1, false, content)
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, content.lines)
   vim.bo[buf].modifiable = false
+
+  local ns_id = vim.api.nvim_create_namespace 'nvim-tree-preview'
+  for _, hl in ipairs(content.hl) do
+    vim.api.nvim_buf_add_highlight(buf, ns_id, hl.group, hl.line, hl.col_start, hl.col_end)
+  end
 end
 
 ---Update the title of the preview window
