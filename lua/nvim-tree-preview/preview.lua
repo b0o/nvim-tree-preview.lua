@@ -417,8 +417,17 @@ function Preview:calculate_win_size()
   }
 end
 
+---Set all window-specific options
+---@param win number Window handle
+function Preview:set_win_options(win)
+  vim.wo[win].wrap = config.wrap
+  vim.wo[win].scrolloff = 0
+  vim.wo[win].number = self.tree_node.type == 'file'
+end
+
 ---Get the window handle for the preview window
 ---@return number|nil window The window handle
+
 function Preview:get_win()
   local tree = get_tree_context()
   if not tree then
@@ -439,6 +448,7 @@ function Preview:get_win()
 
   if self.preview_win and vim.api.nvim_win_is_valid(self.preview_win) then
     vim.api.nvim_win_set_config(self.preview_win, opts)
+    self:set_win_options(self.preview_win)
     return self.preview_win
   end
 
@@ -450,8 +460,7 @@ function Preview:get_win()
   })
 
   local win = noautocmd(vim.api.nvim_open_win, self.preview_buf, false, opts)
-  vim.wo[win].wrap = config.wrap
-  vim.wo[win].scrolloff = 0
+  self:set_win_options(win)
   self.preview_win = win
 
   if config.on_open then
@@ -503,10 +512,7 @@ function Preview:setup_preview_buffer(node)
 end
 
 ---Initialize the preview window and its settings
----@param win number Window handle
----@param node NvimTreeNode
-function Preview:init_preview_window(win, node)
-  vim.wo[win].number = node.type == 'file'
+function Preview:init_preview_window()
   self.augroup = vim.api.nvim_create_augroup('nvim_tree_preview', { clear = true })
   vim.schedule(function()
     self:setup_autocmds()
@@ -530,7 +536,7 @@ function Preview:open(node)
   end
 
   if is_first_open then
-    self:init_preview_window(win, node)
+    self:init_preview_window()
   elseif is_different_node then
     vim.schedule(function()
       self:update_title()
