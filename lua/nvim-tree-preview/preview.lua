@@ -277,7 +277,16 @@ function Preview:load_file_content(path)
     if not buf or self.preview_buf ~= buf or not vim.api.nvim_buf_is_valid(buf) then
       return
     end
+    if util.is_binary(data) then
+      vim.bo[buf].modifiable = true
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, { 'Binary file' })
+      vim.bo[buf].modifiable = false
+      return
+    end
     local processed_data = vim.split(data, '[\r]?\n')
+    if processed_data[#processed_data] == '' then
+      table.remove(processed_data, #processed_data)
+    end
     if processed_data then
       vim.bo[buf].modifiable = true
       local ok = pcall(vim.api.nvim_buf_set_lines, buf, 0, -1, false, processed_data)
