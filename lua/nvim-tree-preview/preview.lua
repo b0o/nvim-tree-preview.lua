@@ -31,6 +31,9 @@ end
 ---@param opts? {focus_tree?: boolean, unwatch?: boolean}
 function Preview:close(opts)
   opts = vim.tbl_extend('force', { focus_tree = true, unwatch = false }, opts or {})
+  if self.augroup ~= nil then
+    vim.api.nvim_del_augroup_by_id(self.augroup)
+  end
   if opts.unwatch then
     self.manager.unwatch { close = false }
   end
@@ -41,9 +44,6 @@ function Preview:close(opts)
     if opts.focus_tree and self.tree_win and self:is_focused() then
       vim.api.nvim_set_current_win(self.tree_win)
     end
-  end
-  if self.augroup ~= nil then
-    vim.api.nvim_del_augroup_by_id(self.augroup)
   end
   self:unload_buf()
   self.augroup = nil
@@ -64,6 +64,14 @@ function Preview:setup_autocmds()
       end
     end,
   })
+  vim.api.nvim_create_autocmd('WinClosed', {
+    group = self.augroup,
+    pattern = tostring(self.preview_win),
+    once = true,
+    callback = function()
+      self:close { focus_tree = false, unwatch = true }
+    end,
+  })
   vim.api.nvim_create_autocmd({ 'CursorMoved' }, {
     group = self.augroup,
     buffer = self.tree_buf,
@@ -82,10 +90,6 @@ function Preview:setup_autocmds()
   })
 end
 
-local function noop()
-  -- noop
-end
-
 function Preview:setup_keymaps()
   ---@param key PreviewKeymapAction
   ---@param opts? any
@@ -93,7 +97,7 @@ function Preview:setup_keymaps()
   local action = function(key, opts)
     if not vim.tbl_contains({ 'close', 'toggle_focus' }, key) then
       vim.notify('nvim-tree preview: Invalid keymap action ' .. key, vim.log.levels.ERROR)
-      return noop
+      return function() end
     end
     return function()
       vim.schedule(function()
@@ -107,7 +111,7 @@ function Preview:setup_keymaps()
   local open = function(mode)
     if not vim.tbl_contains({ 'edit', 'tab', 'vertical', 'horizontal' }, mode) then
       vim.notify('nvim-tree preview: Invalid keymap open mode ' .. mode, vim.log.levels.ERROR)
-      return noop
+      return function() end
     end
     return function()
       self.manager.unwatch { close = false }
@@ -179,6 +183,12 @@ local function read_directory(node)
   return content
 end
 
+---Execute a function without triggering any autocommands
+---@generic TArgs
+---@generic TReturn
+---@param cb fun(...: TArgs): TReturn
+---@param ... TArgs the arguments to pass to the function
+---@return TReturn res the result of the
 local noautocmd = function(cb, ...)
   local eventignore = vim.opt.eventignore
   ---@diagnostic disable-next-line: undefined-field
@@ -212,6 +222,7 @@ function Preview:load_file_content(path)
   end))
 end
 
+---Load the content for the target node into the preview buffer
 function Preview:load_buf_content()
   if not self.tree_node or not self.preview_buf then
     return
@@ -234,6 +245,7 @@ function Preview:load_buf_content()
   vim.bo[buf].modifiable = false
 end
 
+---Update the title of the preview window
 function Preview:update_title()
   if not self.tree_node or not config.show_title then
     return
@@ -253,6 +265,8 @@ function Preview:update_title()
   vim.api.nvim_win_set_config(self.preview_win, opts)
 end
 
+---Get the desired size of the preview window
+---@return {width: number, height: number}
 function Preview:get_size()
   local width = vim.api.nvim_get_option_value('columns', {})
   local height = vim.api.nvim_get_option_value('lines', {})
@@ -262,6 +276,8 @@ function Preview:get_size()
   }
 end
 
+---Get the window handle for the preview window
+---@return number window The window handle
 function Preview:get_win()
   local view_side = require('nvim-tree').config.view.side
   local size = self:get_size()
@@ -297,43 +313,78 @@ function Preview:unload_buf()
   self.preview_buf = nil
 end
 
+---Reset cursor and scroll position in preview window
+function Preview:reset_cursor()
+  if not self.preview_win or not vim.api.nvim_win_is_valid(self.preview_win) then
+    return
+  end
+
+  vim.api.nvim_win_set_cursor(self.preview_win, { 1, 0 })
+  vim.api.nvim_win_call(self.preview_win, function()
+    vim.fn.winrestview { topline = 1, leftcol = 0 }
+  end)
+end
+
+---Creates or updates a preview buffer for the given node
+---@param node NvimTreeNode
+---@return number buffer The buffer number
+function Preview:setup_preview_buffer(node)
+  local needs_new_buffer = not self.preview_buf or not vim.api.nvim_buf_is_valid(self.preview_buf)
+
+  if needs_new_buffer then
+    self.preview_buf = vim.api.nvim_create_buf(false, true)
+    -- Set buffer options that only need to be set once
+    vim.bo[self.preview_buf].bufhidden = 'delete'
+    vim.bo[self.preview_buf].buftype = 'nofile'
+    vim.bo[self.preview_buf].swapfile = false
+    vim.bo[self.preview_buf].buflisted = false
+    vim.bo[self.preview_buf].modifiable = false
+  end
+
+  -- Always update buffer name to match current node
+  vim.api.nvim_buf_set_name(self.preview_buf, 'nvim-tree-preview://' .. node.absolute_path)
+
+  return self.preview_buf
+end
+
+---Initialize the preview window and its settings
+---@param win number Window handle
+---@param node NvimTreeNode
+function Preview:init_preview_window(win, node)
+  vim.wo[win].number = node.type == 'file'
+  self.augroup = vim.api.nvim_create_augroup('nvim_tree_preview', { clear = true })
+  vim.schedule(function()
+    self:setup_autocmds()
+    self:setup_keymaps()
+    self:update_title()
+    self:load_buf_content()
+  end)
+end
+
+---Open the preview window for the given node
 ---@param node NvimTreeNode
 function Preview:open(node)
-  if not self.tree_node or self.tree_node.absolute_path ~= node.absolute_path then
-    self:unload_buf()
-  end
   self.tree_win = vim.api.nvim_get_current_win()
   self.tree_buf = vim.api.nvim_get_current_buf()
+
+  local is_different_node = not self.tree_node or self.tree_node.absolute_path ~= node.absolute_path
+  local is_first_open = not self:is_open()
+
   self.tree_node = node
-
-  ---@type number?
-  local preview_buf = nil
-  if not self.preview_buf or not vim.api.nvim_buf_is_valid(self.preview_buf) then
-    preview_buf = vim.api.nvim_create_buf(false, true)
-    vim.api.nvim_buf_set_name(preview_buf, 'nvim-tree-preview://' .. node.absolute_path)
-    self.preview_buf = preview_buf
-  end
-
+  local preview_buf = self:setup_preview_buffer(node)
   local win = self:get_win()
-  vim.wo[win].number = node.type == 'file'
 
-  if preview_buf then
-    self.augroup = vim.api.nvim_create_augroup('nvim_tree_preview', { clear = true })
-
-    noautocmd(vim.api.nvim_win_set_buf, win, preview_buf)
-    vim.bo[preview_buf].bufhidden = 'delete'
-    vim.bo[preview_buf].buftype = 'nofile'
-    vim.bo[preview_buf].swapfile = false
-    vim.bo[preview_buf].buflisted = false
-    vim.bo[preview_buf].modifiable = false
-
+  if is_first_open then
+    self:init_preview_window(win, node)
+  elseif is_different_node then
     vim.schedule(function()
-      self:setup_autocmds()
-      self:setup_keymaps()
       self:update_title()
       self:load_buf_content()
+      self:reset_cursor()
     end)
   end
+
+  noautocmd(vim.api.nvim_win_set_buf, win, preview_buf)
 end
 
 ---Returns the height of the preview window's content.
