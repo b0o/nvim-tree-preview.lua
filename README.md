@@ -90,6 +90,7 @@ require('nvim-tree-preview').setup {
   --   Actions:
   --     { action = 'close', unwatch? = false, focus_tree? = true }
   --     { action = 'toggle_focus' }
+  --     { action = 'select_node', target: 'next'|'prev' }
   --
   --   Open modes:
   --     { open = 'edit' }
@@ -106,6 +107,8 @@ require('nvim-tree-preview').setup {
     ['<C-t>'] = { open = 'tab' },
     ['<C-v>'] = { open = 'vertical' },
     ['<C-x>'] = { open = 'horizontal' },
+    ['<C-n>'] = { action = 'select_node', target = 'next' },
+    ['<C-p>'] = { action = 'select_node', target = 'prev' },
   },
   min_width = 10,
   min_height = 5,

@@ -8,6 +8,8 @@ local M = {
       ['<C-t>'] = { open = 'tab' },
       ['<C-v>'] = { open = 'vertical' },
       ['<C-x>'] = { open = 'horizontal' },
+      ['<C-n>'] = { action = 'select_node', target = 'next' },
+      ['<C-p>'] = { action = 'select_node', target = 'prev' },
     },
     min_width = 10,
     min_height = 5,

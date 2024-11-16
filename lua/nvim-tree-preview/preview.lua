@@ -7,6 +7,22 @@ local config = require 'nvim-tree-preview.config'
 ---@class Preview
 local Preview = {}
 
+---@return {win: number, buf: number}|nil
+local function get_tree_context()
+  local win = api.tree.winid()
+  if not win or not vim.api.nvim_win_is_valid(win) then
+    return nil
+  end
+  local buf = vim.api.nvim_win_get_buf(win)
+  if not buf or not vim.api.nvim_buf_is_valid(buf) then
+    return nil
+  end
+  return {
+    win = win,
+    buf = buf,
+  }
+end
+
 ---@param manager PreviewManager
 Preview.create = function(manager)
   return setmetatable({
@@ -14,8 +30,6 @@ Preview.create = function(manager)
     augroup = nil,
     preview_win = nil,
     preview_buf = nil,
-    tree_win = nil,
-    tree_buf = nil,
     tree_node = nil,
   }, { __index = Preview })
 end
@@ -41,16 +55,15 @@ function Preview:close(opts)
     if vim.api.nvim_win_is_valid(self.preview_win) then
       vim.api.nvim_win_close(self.preview_win, true)
     end
-    if opts.focus_tree and self.tree_win and self:is_focused() then
-      vim.api.nvim_set_current_win(self.tree_win)
+    local tree = get_tree_context()
+    if opts.focus_tree and tree and self:is_focused() then
+      vim.api.nvim_set_current_win(tree.win)
     end
   end
   self:unload_buf()
   self.augroup = nil
   self.preview_win = nil
   self.preview_buf = nil
-  self.tree_win = nil
-  self.tree_buf = nil
   self.tree_node = nil
   if config.on_close then
     config.on_close()
@@ -58,11 +71,16 @@ function Preview:close(opts)
 end
 
 function Preview:setup_autocmds()
+  local tree = get_tree_context()
+  if not tree then
+    return
+  end
+
   vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter' }, {
     group = self.augroup,
     callback = function()
       local buf = vim.api.nvim_get_current_buf()
-      if not (buf == self.tree_buf or buf == self.preview_buf) then
+      if not (buf == tree.buf or buf == self.preview_buf) then
         self:close { focus_tree = false }
       end
     end,
@@ -77,7 +95,7 @@ function Preview:setup_autocmds()
   })
   vim.api.nvim_create_autocmd({ 'CursorMoved' }, {
     group = self.augroup,
-    buffer = self.tree_buf,
+    buffer = tree.buf,
     callback = function()
       if self.manager.is_watching() then
         -- Do not close the preview window if watching, so that
@@ -93,15 +111,29 @@ function Preview:setup_autocmds()
   })
 end
 
+---Setup keymaps for the preview window
 function Preview:setup_keymaps()
-  ---@param key PreviewKeymapAction
-  ---@param opts? any
+  ---@param key "close"|"toggle_focus"|"select_node" The action to perform
+  ---@param opts? {target?: "next"|"prev"} Optional parameters for the action
   ---@return function
   local action = function(key, opts)
+    if key == 'select_node' then
+      if not opts or not opts.target or not vim.tbl_contains({ 'next', 'prev' }, opts.target) then
+        vim.notify('nvim-tree preview: Move action requires valid direction parameter', vim.log.levels.ERROR)
+        return function() end
+      end
+      return function()
+        vim.schedule(function()
+          self:select_node(opts.target)
+        end)
+      end
+    end
+
     if not vim.tbl_contains({ 'close', 'toggle_focus' }, key) then
       vim.notify('nvim-tree preview: Invalid keymap action ' .. key, vim.log.levels.ERROR)
       return function() end
     end
+
     return function()
       vim.schedule(function()
         self[key](self, opts)
@@ -174,7 +206,7 @@ local function read_directory(node)
     end
     return a.name < b.name
   end)
-  content = { '  ' .. node.name .. '/' }
+  content = { '  ' .. node.name .. '/' }
   for i, file in ipairs(files) do
     local prefix = i == #files and ' └ ' or ' │ '
     if file.is_dir then
@@ -201,8 +233,6 @@ local noautocmd = function(cb, ...)
   return res
 end
 
--- Adapted from telescope.nvim:
--- https://github.com/nvim-telescope/telescope.nvim/blob/35f94f0ef32d70e3664a703cefbe71bd1456d899/lua/telescope/previewers/buffer_previewer.lua#L199
 function Preview:load_file_content(path)
   local buf = self.preview_buf
   Path:new(path):_read_async(vim.schedule_wrap(function(data)
@@ -268,9 +298,47 @@ function Preview:update_title()
   vim.api.nvim_win_set_config(self.preview_win, opts)
 end
 
+---Calculate the optimal position for the preview window
+---@param tree_win number The tree window handle
+---@param size {width: number, height: number} Desired window dimensions
+---@return {row: number, col: number} Calculated position
+function Preview:calculate_win_position(tree_win, size)
+  local view_side = require('nvim-tree').config.view.side
+
+  -- Get cursor and window scroll information
+  local cursor_row = vim.api.nvim_win_get_cursor(tree_win)[1] - 1 -- Convert from 1-based to 0-based
+  local win_info = vim.fn.getwininfo(tree_win)[1]
+  local topline = win_info.topline - 1 -- Convert from 1-based to 0-based
+
+  -- Calculate cursor position relative to visible window
+  local relative_cursor = cursor_row - topline
+
+  -- Get cursor position in screen coordinates
+  local win_pos = vim.api.nvim_win_get_position(tree_win)
+  local screen_row = win_pos[1] + relative_cursor
+
+  -- Get editor dimensions
+  local editor_height = vim.api.nvim_get_option_value('lines', {}) - 1 -- Subtract 1 for cmdline
+
+  -- Adjust row to keep preview window within editor bounds
+  local row = relative_cursor
+  if screen_row + size.height > editor_height then
+    -- If preview would go below editor bottom, adjust relative position upward
+    row = relative_cursor - ((screen_row + size.height) - editor_height)
+  end
+
+  -- Calculate column position based on tree side
+  local col = (view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or -size.width - 3)
+
+  return {
+    row = row,
+    col = col,
+  }
+end
+
 ---Get the desired size of the preview window
 ---@return {width: number, height: number}
-function Preview:get_size()
+function Preview:calculate_win_size()
   local width = vim.api.nvim_get_option_value('columns', {})
   local height = vim.api.nvim_get_option_value('lines', {})
   return {
@@ -280,35 +348,46 @@ function Preview:get_size()
 end
 
 ---Get the window handle for the preview window
----@return number window The window handle
+---@return number|nil window The window handle
 function Preview:get_win()
-  local view_side = require('nvim-tree').config.view.side
-  local size = self:get_size()
+  local tree = get_tree_context()
+  if not tree then
+    return nil
+  end
+
+  local size = self:calculate_win_size()
+  local position = self:calculate_win_position(tree.win, size)
+
   local opts = {
     width = size.width,
     height = size.height,
-    row = math.max(0, vim.fn.screenrow() - 1),
-    -- if view.side is 'right', then the preview window will be on the left of nvim-tree
-    col = (view_side == 'left' and vim.fn.winwidth(0) + 1 or -size.width - 3),
+    row = position.row,
+    col = position.col,
     relative = 'win',
+    win = tree.win,
   }
+
   if self.preview_win and vim.api.nvim_win_is_valid(self.preview_win) then
     vim.api.nvim_win_set_config(self.preview_win, opts)
     return self.preview_win
   end
+
   opts = vim.tbl_extend('force', opts, {
     noautocmd = true,
     focusable = false,
     border = config.border,
     zindex = config.zindex,
   })
+
   local win = noautocmd(vim.api.nvim_open_win, self.preview_buf, false, opts)
   vim.wo[win].wrap = config.wrap
   vim.wo[win].scrolloff = 0
   self.preview_win = win
+
   if config.on_open then
     config.on_open(self.preview_win, self.preview_buf)
   end
+
   return win
 end
 
@@ -370,15 +449,15 @@ end
 ---Open the preview window for the given node
 ---@param node NvimTreeNode
 function Preview:open(node)
-  self.tree_win = vim.api.nvim_get_current_win()
-  self.tree_buf = vim.api.nvim_get_current_buf()
-
   local is_different_node = not self.tree_node or self.tree_node.absolute_path ~= node.absolute_path
   local is_first_open = not self:is_open()
 
   self.tree_node = node
   local preview_buf = self:setup_preview_buffer(node)
   local win = self:get_win()
+  if not win then
+    return
+  end
 
   if is_first_open then
     self:init_preview_window(win, node)
@@ -411,8 +490,6 @@ function Preview:win_buf_height()
 end
 
 ---Scrolls the preview window by the given number of lines.
----Adapted from noice.nvim:
----https://github.com/folke/noice.nvim/blob/df448c649ef6bc5a6/lua/noice/util/nui.lua#L238
 ---@param delta number
 function Preview:scroll(delta)
   if not self:is_open() then
@@ -433,15 +510,51 @@ function Preview:scroll(delta)
   return true
 end
 
+---Move to next or previous tree node and update preview
+---@param direction "next"|"prev" Direction to move the cursor
+function Preview:select_node(direction)
+  local tree = get_tree_context()
+  if not self:is_open() or not tree then
+    return
+  end
+
+  local cursor = vim.api.nvim_win_get_cursor(tree.win)
+  local row = cursor[1]
+  local col = cursor[2]
+
+  -- Get buffer line count
+  local line_count = vim.api.nvim_buf_line_count(tree.buf)
+
+  -- Calculate new row position
+  local new_row
+  if direction == 'next' then
+    new_row = math.min(row + 1, line_count)
+  else
+    new_row = math.max(1, row - 1)
+  end
+
+  -- Set new cursor position
+  vim.api.nvim_win_set_cursor(tree.win, { new_row, col })
+
+  local ok, node = pcall(api.tree.get_node_under_cursor)
+  if ok and node then
+    self:open(node)
+  end
+end
+
 function Preview:toggle_focus()
   if not self:is_open() then
+    return
+  end
+  local tree = get_tree_context()
+  if not tree then
     return
   end
   local win = vim.api.nvim_get_current_win()
   if win == self.preview_win then
     vim.schedule(function()
-      if self.tree_win and vim.api.nvim_win_is_valid(self.tree_win) then
-        vim.api.nvim_set_current_win(self.tree_win)
+      if tree.win and vim.api.nvim_win_is_valid(tree.win) then
+        vim.api.nvim_set_current_win(tree.win)
       end
     end)
   else
