@@ -97,7 +97,7 @@ function M.watch()
   end
   vim.api.nvim_create_autocmd({ 'CursorMoved' }, {
     group = M.watch_augroup,
-    buffer = 0,
+    buffer = M.watch_tree_buf,
     callback = function()
       local ok, node = pcall(api.tree.get_node_under_cursor)
       if not ok or not node then
