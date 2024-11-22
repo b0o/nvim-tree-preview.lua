@@ -19,12 +19,13 @@
 ---@alias PreviewKeymapOpenDirection 'edit'|'tab'|'vertical'|'horizontal'
 ---@alias PreviewKeymapActionClose {action: 'close', focus_tree?: boolean, unwatch?: boolean}
 ---@alias PreviewKeymapActionToggleFocus {action: 'toggle_focus'}
----@alias PreviewKeymapAction PreviewKeymapActionClose|PreviewKeymapActionToggleFocus
+---@alias PreviewKeymapActionSelectNode {action: 'select_node', target: 'next'|'prev'}
+---@alias PreviewKeymapAction PreviewKeymapActionClose|PreviewKeymapActionToggleFocus|PreviewKeymapActionSelectNode
 ---@alias PreviewKeymap string|function|PreviewKeymapAction|{open: PreviewKeymapOpenDirection}
 ---@alias PreviewKeymapSpec {[1]: string, [2]: PreviewKeymap}
 
 ---@class PreviewConfig
----@field keymaps Map<string, PreviewKeymap>
+---@field keymaps {[string]: PreviewKeymap}
 ---@field min_width number
 ---@field min_height number
 ---@field max_width number
