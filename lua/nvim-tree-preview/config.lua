@@ -45,6 +45,8 @@ local function setup(config)
     'title_pos must be one of top-left, top-center, top-right, bottom-left, bottom-center, bottom-right'
   )
   assert(type(M.config.title_format) == 'string', 'title_format must be a string')
+  assert(type(M.config.on_open) == 'function' or M.config.on_open == nil, 'on_open must be a function or nil')
+  assert(type(M.config.on_close) == 'function' or M.config.on_close == nil, 'on_close must be a function or nil')
 end
 
 return setmetatable({}, {
