@@ -23,6 +23,8 @@ local function get_tree_context()
   }
 end
 
+local running_toggle_focus = false
+
 ---@param manager PreviewManager
 Preview.create = function(manager)
   return setmetatable({
@@ -76,12 +78,12 @@ function Preview:setup_autocmds()
     return
   end
 
-  vim.api.nvim_create_autocmd({ 'BufEnter', 'WinEnter' }, {
+  vim.api.nvim_create_autocmd("BufEnter", {
     group = self.augroup,
-    callback = function()
-      local buf = vim.api.nvim_get_current_buf()
-      if not (buf == tree.buf or buf == self.preview_buf) then
-        self:close { focus_tree = false }
+    callback = function(state)
+      local buf = state.buf
+      if not running_toggle_focus or not (buf == tree.buf or buf == self.preview_buf) then
+        self:close { focus_tree = false, unwatch = true }
       end
     end,
   })
@@ -105,7 +107,7 @@ function Preview:setup_autocmds()
       local ok, node = pcall(api.tree.get_node_under_cursor)
       local self_node = self.tree_node
       if not ok or not node or not self_node or node.absolute_path ~= self_node.absolute_path then
-        self:close()
+        self:close { focus_tree = false, unwatch = true }
       end
     end,
   })
@@ -397,7 +399,7 @@ function Preview:calculate_win_position(tree_win, size)
   local screen_row = win_pos[1] + relative_cursor
 
   -- Get editor dimensions
-  local editor_height = vim.api.nvim_get_option_value('lines', {}) - 1 -- Subtract 1 for cmdline
+  local editor_height = vim.api.nvim_get_option_value('lines', {}) - 4 -- Subtract 1 for cmdline|statusline|tabline|border
 
   -- Adjust row to keep preview window within editor bounds
   local row = relative_cursor
@@ -410,7 +412,7 @@ function Preview:calculate_win_position(tree_win, size)
   local col = (view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or -size.width - 3)
 
   return {
-    row = row,
+    row = row == 0 and 1 or row,
     col = col,
   }
 end
@@ -481,9 +483,10 @@ function Preview:get_win()
 end
 
 function Preview:unload_buf()
-  if self.preview_buf and vim.api.nvim_buf_is_valid(self.preview_buf) then
+  if self.preview_buf then -- and vim.api.nvim_buf_is_valid(self.preview_buf) 
     vim.api.nvim_buf_delete(self.preview_buf, { force = true })
   end
+
   self.preview_buf = nil
 end
 
@@ -505,6 +508,7 @@ end
 function Preview:setup_preview_buffer(node)
   local needs_new_buffer = not self.preview_buf or not vim.api.nvim_buf_is_valid(self.preview_buf)
 
+  local prev_bufname
   if needs_new_buffer then
     self.preview_buf = vim.api.nvim_create_buf(false, true)
     -- Set buffer options that only need to be set once
@@ -513,10 +517,19 @@ function Preview:setup_preview_buffer(node)
     vim.bo[self.preview_buf].swapfile = false
     vim.bo[self.preview_buf].buflisted = false
     vim.bo[self.preview_buf].modifiable = false
+  else
+    prev_bufname = vim.api.nvim_buf_get_name(self.preview_buf)
   end
 
   -- Always update buffer name to match current node
   vim.api.nvim_buf_set_name(self.preview_buf, 'nvim-tree-preview://' .. node.absolute_path)
+
+  if prev_bufname then
+    local prev_bufinfo = vim.fn.getbufinfo(prev_bufname)[1]
+    if prev_bufinfo then
+      noautocmd(vim.api.nvim_buf_delete, prev_bufinfo.bufnr, { force = true })
+    end
+  end
 
   return self.preview_buf
 end
@@ -636,18 +649,25 @@ function Preview:toggle_focus()
   if not tree then
     return
   end
+
+  running_toggle_focus = true
+
   local win = vim.api.nvim_get_current_win()
   if win == self.preview_win then
     vim.schedule(function()
       if tree.win and vim.api.nvim_win_is_valid(tree.win) then
         vim.api.nvim_set_current_win(tree.win)
       end
+
+      running_toggle_focus = false
     end)
   else
     vim.schedule(function()
       if self.preview_win and vim.api.nvim_win_is_valid(self.preview_win) then
         vim.api.nvim_set_current_win(self.preview_win)
       end
+
+      running_toggle_focus = false
     end)
   end
 end
