@@ -7,6 +7,9 @@
 ---@field name string
 ---@field type 'file' | 'directory' | 'link'
 
+---@class PreviewImage
+---@field clear fun()
+
 ---@class Preview
 ---@field manager PreviewManager
 ---@field augroup number?
@@ -15,6 +18,7 @@
 ---@field tree_win number?
 ---@field tree_buf number?
 ---@field tree_node NvimTreeNode?
+---@field image PreviewImage?
 
 ---@alias PreviewKeymapOpenDirection 'edit'|'tab'|'vertical'|'horizontal'
 ---@alias PreviewKeymapActionClose {action: 'close', focus_tree?: boolean, unwatch?: boolean}
@@ -36,8 +40,10 @@
 ---@field show_title boolean
 ---@field title_pos 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-center'|'bottom-right'
 ---@field title_format string
+---@field follow_links boolean
 ---@field on_open? fun(win: number, buf: number)
 ---@field on_close? fun()
+---@field image_preview {enable: boolean, patterns: string[]}
 
 ---@class PreviewConfigSetup: PreviewConfig
 

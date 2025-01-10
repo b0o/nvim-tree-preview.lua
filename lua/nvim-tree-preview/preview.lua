@@ -31,15 +31,20 @@ Preview.create = function(manager)
     preview_win = nil,
     preview_buf = nil,
     tree_node = nil,
+    image = nil,
   }, { __index = Preview })
 end
 
-function Preview:is_open()
-  return self.preview_win ~= nil and vim.api.nvim_win_is_valid(self.preview_win)
+function Preview:is_valid()
+  return self.tree_node ~= nil
+    and self.preview_win ~= nil
+    and vim.api.nvim_win_is_valid(self.preview_win)
+    and self.preview_buf ~= nil
+    and vim.api.nvim_buf_is_valid(self.preview_buf)
 end
 
 function Preview:is_focused()
-  return self:is_open() and vim.api.nvim_get_current_win() == self.preview_win
+  return self:is_valid() and vim.api.nvim_get_current_win() == self.preview_win
 end
 
 ---@param opts? {focus_tree?: boolean, unwatch?: boolean}
@@ -51,6 +56,7 @@ function Preview:close(opts)
   if opts.unwatch then
     self.manager.unwatch { close = false }
   end
+  self:clear_buf()
   if self.preview_win ~= nil then
     if vim.api.nvim_win_is_valid(self.preview_win) then
       vim.api.nvim_win_close(self.preview_win, true)
@@ -187,10 +193,10 @@ function Preview:setup_keymaps()
   end
 end
 
----@param node NvimTreeNode
+---@param path string
 ---@return {lines: string[], hl: {group: string, line: number, col_start: number, col_end: number}[]}
-local function read_directory(node)
-  local content = vim.fn.readdir(node.absolute_path)
+local function read_directory(path)
+  local content = vim.fn.readdir(path)
   if not content then
     return {
       lines = { 'Error reading directory' },
@@ -201,7 +207,7 @@ local function read_directory(node)
   local files = vim.tbl_map(function(name)
     return {
       name = name,
-      is_dir = vim.fn.isdirectory(node.absolute_path .. '/' .. name) == 1,
+      is_dir = vim.fn.isdirectory(path .. '/' .. name) == 1,
     }
   end, content)
 
@@ -212,10 +218,12 @@ local function read_directory(node)
     return a.name < b.name
   end)
 
-  local lines = { '  ' .. node.name .. '/' }
+  local fname = vim.fn.fnamemodify(path, ':t')
+
+  local lines = { '  ' .. fname .. '/' }
   local highlights = {
     -- Highlight the root directory name
-    { group = 'NvimTreeFolderName', line = 0, col_start = 2, col_end = 2 + #node.name + 1 },
+    { group = 'NvimTreeFolderName', line = 0, col_start = 2, col_end = 2 + #fname + 1 },
   }
 
   for i, file in ipairs(files) do
@@ -272,11 +280,12 @@ local noautocmd = function(cb, ...)
 end
 
 function Preview:load_file_content(path)
-  local buf = self.preview_buf
   Path:new(path):_read_async(vim.schedule_wrap(function(data)
-    if not buf or self.preview_buf ~= buf or not vim.api.nvim_buf_is_valid(buf) then
+    if not self:is_valid() then
       return
     end
+    local buf = self.preview_buf --[[ @as number ]]
+    local tree_node = self.tree_node --[[ @as NvimTreeNode ]]
     if util.is_binary(data) then
       vim.bo[buf].modifiable = true
       vim.api.nvim_buf_set_lines(buf, 0, -1, false, { 'Binary file' })
@@ -294,7 +303,7 @@ function Preview:load_file_content(path)
       if not ok then
         return
       end
-      local ft = vim.filetype.match { buf = buf, filename = self.tree_node.absolute_path }
+      local ft = vim.filetype.match { buf = buf, filename = tree_node.absolute_path }
       if ft and vim.bo[buf].filetype ~= ft then
         vim.bo[buf].filetype = ft
       end
@@ -304,22 +313,48 @@ end
 
 ---Load the content for the target node into the preview buffer
 function Preview:load_buf_content()
-  local buf = self.preview_buf
-  local tree_node = self.tree_node
-  if not tree_node or not buf then
+  if not self:is_valid() then
     return
   end
+  self:clear_buf()
 
-  if tree_node.type == 'file' then
-    self:load_file_content(tree_node.absolute_path)
+  local tree_node = self.tree_node --[[ @as NvimTreeNode ]]
+  local path = tree_node.absolute_path
+  local stat
+
+  ---@type "file"|"directory"|"link"|"fifo"|"socket"|"char"|"block"
+  local type = tree_node.type
+
+  if tree_node.type == 'link' and config.follow_links then
+    local link_path = vim.uv.fs_realpath(tree_node.absolute_path)
+    if link_path then
+      local link_stat = vim.uv.fs_stat(link_path)
+      if link_stat then
+        path = link_path
+        stat = link_stat
+        type = stat.type
+      end
+    end
+  end
+
+  if type == 'file' then
+    local is_previewable_image = config.image_preview.enable
+      and vim.iter(config.image_preview.patterns):any(function(pattern)
+        return path:lower():find(pattern) ~= nil
+      end)
+    if is_previewable_image then
+      self:load_image()
+    else
+      self:load_file_content(tree_node.absolute_path)
+    end
     return
   end
 
   ---@type {lines: string[], hl: table[]}?
   local content
-  if tree_node.type == 'directory' then
-    content = read_directory(tree_node)
-  elseif tree_node.type == 'link' then
+  if type == 'directory' then
+    content = read_directory(path)
+  elseif type == 'link' then
     content = {
       lines = { tree_node.name .. ' → ' .. tree_node.link_to },
       hl = {
@@ -333,36 +368,105 @@ function Preview:load_buf_content()
     }
   else
     content = {
-      lines = { tree_node.name },
+      lines = {
+        string.format('%s %s', tree_node.name, tree_node.type),
+      },
       hl = {
-        {
-          group = 'Normal',
-          line = 0,
-          col_start = 0,
-          col_end = #tree_node.name,
-        },
+        { group = 'Normal', line = 0, col_start = 0, col_end = #tree_node.name + #tree_node.type },
+        { group = 'NvimTreeSymlink', line = 0, col_start = 0, col_end = #tree_node.name + #tree_node.type },
       },
     }
   end
 
+  self:set_buf_content(content)
+end
+
+function Preview:clear_buf()
+  if not self:is_valid() then
+    return
+  end
+  local buf = self.preview_buf --[[ @as number ]]
   vim.api.nvim_buf_clear_namespace(buf, -1, 0, -1)
+  if self.image ~= nil then
+    self.image:clear()
+    self.image = nil
+  end
+  vim.bo[buf].modifiable = true
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, {})
+  vim.bo[buf].modifiable = false
+end
+
+---@param content {lines: string[], hl?: table[]}
+function Preview:set_buf_content(content)
+  if not self:is_valid() then
+    return
+  end
+
+  local buf = self.preview_buf --[[ @as number ]]
 
   vim.bo[buf].modifiable = true
   vim.api.nvim_buf_set_lines(buf, 0, -1, false, content.lines)
   vim.bo[buf].modifiable = false
 
-  local ns_id = vim.api.nvim_create_namespace 'nvim-tree-preview'
-  for _, hl in ipairs(content.hl) do
-    vim.api.nvim_buf_add_highlight(buf, ns_id, hl.group, hl.line, hl.col_start, hl.col_end)
+  if content.hl then
+    local ns_id = vim.api.nvim_create_namespace 'nvim-tree-preview'
+    for _, hl in ipairs(content.hl) do
+      vim.api.nvim_buf_add_highlight(buf, ns_id, hl.group, hl.line, hl.col_start, hl.col_end)
+    end
   end
+end
+
+---Load the content for the target node into the preview buffer
+function Preview:load_image()
+  if not self:is_valid() then
+    return
+  end
+  self:clear_buf()
+  local buf = self.preview_buf --[[ @as number ]]
+  local win = self.preview_win --[[ @as number ]]
+  local ok, image_nvim = pcall(require, 'image')
+  if not ok then
+    vim.notify_once('nvim-tree-preview: image.nvim not found', vim.log.levels.ERROR)
+    return
+  end
+  local image = image_nvim.from_file(self.tree_node.absolute_path, {
+    window = win,
+    buffer = buf,
+    max_width_window_percentage = 100,
+    max_height_window_percentage = 100,
+  })
+  if not image then
+    local msg = 'Error reading image'
+    self:set_buf_content {
+      lines = { msg },
+      hl = {
+        {
+          group = 'ErrorMsg',
+          line = 0,
+          col_start = 0,
+          col_end = #msg,
+        },
+      },
+    }
+    return
+  end
+  vim.schedule(function()
+    image:render()
+  end)
+  self.image = image --[[ @as PreviewImage ]]
 end
 
 ---Update the title of the preview window
 function Preview:update_title()
-  if not self.tree_node or not config.show_title then
+  if not self:is_valid() or not config.show_title then
     return
   end
-  local name = self.tree_node.name .. (self.tree_node.type == 'directory' and '/' or '')
+  local name = self.tree_node.name
+  if self.tree_node.type == 'directory' then
+    name = name .. '/'
+  elseif self.tree_node.type == 'link' then
+    name = name .. ' -> ' .. self.tree_node.link_to
+  end
   local title = string.format(config.title_format or ' %s ', name)
   local pos_y, pos_x = unpack(vim.split(config.title_pos, '-'))
   ---@type vim.api.keyset.win_config
@@ -427,11 +531,15 @@ function Preview:calculate_win_size()
 end
 
 ---Set all window-specific options
----@param win number Window handle
-function Preview:set_win_options(win)
+function Preview:set_win_options()
+  if not self:is_valid() then
+    return
+  end
+  local win = self.preview_win --[[ @as number ]]
   vim.wo[win].wrap = config.wrap
   vim.wo[win].scrolloff = 0
-  vim.wo[win].number = self.tree_node.type == 'file'
+  vim.wo[win].number = self.tree_node.type == 'file' and self.image == nil
+  vim.wo[win].listchars = self.image == nil and '' or 'tab:  ,trail: ,nbsp: ,extends: ,precedes: ,space: '
   vim.wo[win].relativenumber = false
 end
 
@@ -458,7 +566,7 @@ function Preview:get_win()
 
   if self.preview_win and vim.api.nvim_win_is_valid(self.preview_win) then
     vim.api.nvim_win_set_config(self.preview_win, opts)
-    self:set_win_options(self.preview_win)
+    -- self:set_win_options(self.preview_win)
     return self.preview_win
   end
 
@@ -470,7 +578,7 @@ function Preview:get_win()
   })
 
   local win = noautocmd(vim.api.nvim_open_win, self.preview_buf, false, opts)
-  self:set_win_options(win)
+  -- self:set_win_options(win)
   self.preview_win = win
 
   if config.on_open then
@@ -529,6 +637,7 @@ function Preview:init_preview_window()
     self:setup_keymaps()
     self:update_title()
     self:load_buf_content()
+    self:set_win_options()
   end)
 end
 
@@ -536,7 +645,7 @@ end
 ---@param node NvimTreeNode
 function Preview:open(node)
   local is_different_node = not self.tree_node or self.tree_node.absolute_path ~= node.absolute_path
-  local is_first_open = not self:is_open()
+  local is_first_open = not self:is_valid()
 
   self.tree_node = node
   local preview_buf = self:setup_preview_buffer(node)
@@ -551,6 +660,7 @@ function Preview:open(node)
     vim.schedule(function()
       self:update_title()
       self:load_buf_content()
+      self:set_win_options()
       self:reset_cursor()
     end)
   end
@@ -578,7 +688,7 @@ end
 ---Scrolls the preview window by the given number of lines.
 ---@param delta number
 function Preview:scroll(delta)
-  if not self:is_open() then
+  if not self:is_valid() then
     return false
   end
   local win = self.preview_win --[[ @as number ]]
@@ -600,7 +710,7 @@ end
 ---@param direction "next"|"prev" Direction to move the cursor
 function Preview:select_node(direction)
   local tree = get_tree_context()
-  if not self:is_open() or not tree then
+  if not self:is_valid() or not tree then
     return
   end
 
@@ -629,7 +739,7 @@ function Preview:select_node(direction)
 end
 
 function Preview:toggle_focus()
-  if not self:is_open() then
+  if not self:is_valid() then
     return
   end
   local tree = get_tree_context()

@@ -21,6 +21,18 @@ local M = {
     show_title = true,
     title_pos = 'top-center',
     title_format = ' %s ',
+    follow_links = true,
+    image_preview = {
+      enable = false,
+      patterns = {
+        '.*%.png$',
+        '.*%.jpg$',
+        '.*%.jpeg$',
+        '.*%.gif$',
+        '.*%.webp$',
+        '.*%.avif$',
+      },
+    },
     on_open = nil,
     on_close = nil,
   },
@@ -45,8 +57,15 @@ local function setup(config)
     'title_pos must be one of top-left, top-center, top-right, bottom-left, bottom-center, bottom-right'
   )
   assert(type(M.config.title_format) == 'string', 'title_format must be a string')
+  assert(type(M.config.follow_links) == 'boolean', 'follow_links must be a boolean')
   assert(type(M.config.on_open) == 'function' or M.config.on_open == nil, 'on_open must be a function or nil')
   assert(type(M.config.on_close) == 'function' or M.config.on_close == nil, 'on_close must be a function or nil')
+  assert(type(M.config.image_preview) == 'table', 'image_preview must be a table')
+  assert(type(M.config.image_preview.enable) == 'boolean', 'image_preview.enable must be a boolean')
+  assert(type(M.config.image_preview.patterns) == 'table', 'image_preview.patterns must be a table')
+  for _, pattern in ipairs(M.config.image_preview.patterns) do
+    assert(type(pattern) == 'string', 'image_preview.patterns must be a table of strings')
+  end
 end
 
 return setmetatable({}, {
