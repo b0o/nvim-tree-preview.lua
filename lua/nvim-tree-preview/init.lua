@@ -5,7 +5,10 @@ local M = {}
 ---@param config? PreviewConfigSetup
 function M.setup(config)
   ---@diagnostic disable-next-line: undefined-field
-  require('nvim-tree-preview.config').setup(config or {})
+  local ok, err = pcall(require('nvim-tree-preview.config').setup, config or {})
+  if not ok then
+    vim.notify_once('nvim-tree-preview: config error: ' .. tostring(err), vim.log.levels.ERROR)
+  end
 end
 
 M.node = manager.node

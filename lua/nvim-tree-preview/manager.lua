@@ -21,7 +21,7 @@ function M.node(node, opts)
     M.instance:close()
     return
   end
-  if M.instance:is_open() then
+  if M.instance:is_valid() then
     if M.instance.tree_node.absolute_path == node.absolute_path then
       if opts.toggle_focus then
         M.instance:toggle_focus()
@@ -38,7 +38,7 @@ function M.node_under_cursor(opts)
   opts = vim.tbl_extend('force', { toggle_focus = true }, opts or {})
   local ok, node = pcall(api.tree.get_node_under_cursor)
   if not ok then
-    if M.instance and M.instance:is_open() then
+    if M.instance and M.instance:is_valid() then
       M.instance:close()
     end
     return
@@ -60,7 +60,7 @@ end
 
 ---Returns true if a preview window is open.
 function M.is_open()
-  return M.instance and M.instance:is_open()
+  return M.instance and M.instance:is_valid()
 end
 
 ---Returns true if the preview window is focused.
@@ -92,7 +92,7 @@ function M.watch()
   end
   M.watch_augroup = vim.api.nvim_create_augroup('nvim_tree_preview_watch', { clear = true })
   M.watch_tree_buf = vim.api.nvim_get_current_buf()
-  if not M.instance or not M.instance:is_open() then
+  if not M.instance or not M.instance:is_valid() then
     M.node_under_cursor()
   end
   vim.api.nvim_create_autocmd({ 'CursorMoved' }, {
