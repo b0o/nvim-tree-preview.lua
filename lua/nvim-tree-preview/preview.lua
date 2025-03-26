@@ -23,8 +23,6 @@ local function get_tree_context()
   }
 end
 
-local running_toggle_focus = false
-
 ---@param manager PreviewManager
 Preview.create = function(manager)
   return setmetatable({
@@ -88,7 +86,7 @@ function Preview:setup_autocmds()
     group = self.augroup,
     callback = function(state)
       local buf = state.buf
-      if not running_toggle_focus or not (buf == tree.buf or buf == self.preview_buf) then
+      if not (buf == tree.buf or buf == self.preview_buf) then
         self:close { focus_tree = false, unwatch = true }
       end
     end,
@@ -503,7 +501,7 @@ function Preview:calculate_win_position(tree_win, size)
   local screen_row = win_pos[1] + relative_cursor
 
   -- Get editor dimensions
-  local editor_height = vim.api.nvim_get_option_value('lines', {}) - 3 -- Subtract 1 for cmdline|statusline|tabline|border
+  local editor_height = vim.api.nvim_get_option_value('lines', {}) - 1 -- Subtract 1 for cmdline
 
   -- Adjust row to keep preview window within editor bounds
   local row = relative_cursor
@@ -513,10 +511,10 @@ function Preview:calculate_win_position(tree_win, size)
   end
 
   -- Calculate column position based on tree side
-  local col = (view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or -size.width - 3)
+  local col = (view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or - size.width - 3)
 
   return {
-    row = row <= 0 and 1 or row,
+    row = row,
     col = col,
   }
 end
@@ -526,10 +524,9 @@ end
 function Preview:calculate_win_size()
   local width = vim.api.nvim_get_option_value('columns', {})
   local height = vim.api.nvim_get_option_value('lines', {})
-  local editor_height = vim.api.nvim_get_option_value('lines', {}) - 6
   return {
     width = math.min(config.max_width, math.max(config.min_width, math.ceil(width / 2))),
-    height = math.min(editor_height, math.min(config.max_height, math.max(config.min_height, math.ceil(height / 2)))),
+    height = math.min(config.max_height, math.max(config.min_height, math.ceil(height / 2))),
   }
 end
 
@@ -557,6 +554,11 @@ function Preview:get_win()
 
   local size = self:calculate_win_size()
   local position = self:calculate_win_position(tree.win, size)
+
+  if position.row < 0 then
+    position.row = 0
+    size.height = size.height - 3
+  end
 
   local opts = {
     width = size.width,
@@ -592,7 +594,7 @@ function Preview:get_win()
 end
 
 function Preview:unload_buf()
-  if self.preview_buf then -- and vim.api.nvim_buf_is_valid(self.preview_buf) 
+  if self.preview_buf and vim.api.nvim_buf_is_valid(self.preview_buf) then
     vim.api.nvim_buf_delete(self.preview_buf, { force = true })
   end
 
@@ -761,24 +763,18 @@ function Preview:toggle_focus()
     return
   end
 
-  running_toggle_focus = true
-
   local win = vim.api.nvim_get_current_win()
   if win == self.preview_win then
     vim.schedule(function()
       if tree.win and vim.api.nvim_win_is_valid(tree.win) then
         vim.api.nvim_set_current_win(tree.win)
       end
-
-      running_toggle_focus = false
     end)
   else
     vim.schedule(function()
       if self.preview_win and vim.api.nvim_win_is_valid(self.preview_win) then
         vim.api.nvim_set_current_win(self.preview_win)
       end
-
-      running_toggle_focus = false
     end)
   end
 end
