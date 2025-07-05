@@ -486,32 +486,56 @@ end
 ---@param size {width: number, height: number} Desired window dimensions
 ---@return {row: number, col: number} Calculated position
 function Preview:calculate_win_position(tree_win, size)
-  local view_side = require('nvim-tree').config.view.side
+  local row, col
+  local calculate_row, calculate_col = true, true
 
-  -- Get cursor and window scroll information
-  local cursor_row = vim.api.nvim_win_get_cursor(tree_win)[1] - 1 -- Convert from 1-based to 0-based
-  local win_info = vim.fn.getwininfo(tree_win)[1]
-  local topline = win_info.topline - 1 -- Convert from 1-based to 0-based
+  -- Check for user config first
+  if config.win_position then
+    if config.win_position.row ~= nil then
+      row = type(config.win_position.row) == 'function' and config.win_position.row(tree_win, size)
+        or config.win_position.row
+      calculate_row = false
+    end
 
-  -- Calculate cursor position relative to visible window
-  local relative_cursor = cursor_row - topline
-
-  -- Get cursor position in screen coordinates
-  local win_pos = vim.api.nvim_win_get_position(tree_win)
-  local screen_row = win_pos[1] + relative_cursor
-
-  -- Get editor dimensions
-  local editor_height = vim.api.nvim_get_option_value('lines', {}) - 1 -- Subtract 1 for cmdline
-
-  -- Adjust row to keep preview window within editor bounds
-  local row = relative_cursor
-  if screen_row + size.height > editor_height then
-    -- If preview would go below editor bottom, adjust relative position upward
-    row = relative_cursor - ((screen_row + size.height) - editor_height)
+    if config.win_position.col ~= nil then
+      col = type(config.win_position.col) == 'function' and config.win_position.col(tree_win, size)
+        or config.win_position.col
+      calculate_col = false
+    end
   end
 
-  -- Calculate column position based on tree side
-  local col = (view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or -size.width - 3)
+  if calculate_row or calculate_col then
+    local view_side = require('nvim-tree').config.view.side
+
+    -- Get cursor and window scroll information
+    local cursor_row = vim.api.nvim_win_get_cursor(tree_win)[1] - 1 -- Convert from 1-based to 0-based
+    local win_info = vim.fn.getwininfo(tree_win)[1]
+    local topline = win_info.topline - 1 -- Convert from 1-based to 0-based
+
+    -- Calculate cursor position relative to visible window
+    local relative_cursor = cursor_row - topline
+
+    if calculate_row then
+      -- Get cursor position in screen coordinates
+      local win_pos = vim.api.nvim_win_get_position(tree_win)
+      local screen_row = win_pos[1] + relative_cursor
+
+      -- Get editor dimensions
+      local editor_height = vim.api.nvim_get_option_value('lines', {}) - 1 -- Subtract 1 for cmdline
+
+      -- Adjust row to keep preview window within editor bounds
+      row = relative_cursor
+      if screen_row + size.height > editor_height then
+        -- If preview would go below editor bottom, adjust relative position upward
+        row = relative_cursor - ((screen_row + size.height) - editor_height)
+      end
+    end
+
+    if calculate_col then
+      -- Calculate column position based on tree side
+      col = (view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or -size.width - 3)
+    end
+  end
 
   return {
     row = row,

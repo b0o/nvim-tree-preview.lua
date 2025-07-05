@@ -22,6 +22,7 @@ local M = {
     title_pos = 'top-center',
     title_format = ' %s ',
     follow_links = true,
+    win_position = {},
     image_preview = {
       enable = false,
       patterns = {
