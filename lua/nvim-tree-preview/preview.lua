@@ -487,24 +487,21 @@ end
 ---@return {row: number, col: number} Calculated position
 function Preview:calculate_win_position(tree_win, size)
   local row, col
-  local calculate_row, calculate_col = true, true
 
   -- Check for user config first
   if config.win_position then
     if config.win_position.row ~= nil then
       row = type(config.win_position.row) == 'function' and config.win_position.row(tree_win, size)
         or config.win_position.row
-      calculate_row = false
     end
 
     if config.win_position.col ~= nil then
       col = type(config.win_position.col) == 'function' and config.win_position.col(tree_win, size)
         or config.win_position.col
-      calculate_col = false
     end
   end
 
-  if calculate_row or calculate_col then
+  if row == nil or col == nil then
     local view_side = require('nvim-tree').config.view.side
 
     -- Get cursor and window scroll information
@@ -515,7 +512,7 @@ function Preview:calculate_win_position(tree_win, size)
     -- Calculate cursor position relative to visible window
     local relative_cursor = cursor_row - topline
 
-    if calculate_row then
+    if row == nil then
       -- Get cursor position in screen coordinates
       local win_pos = vim.api.nvim_win_get_position(tree_win)
       local screen_row = win_pos[1] + relative_cursor
@@ -531,7 +528,7 @@ function Preview:calculate_win_position(tree_win, size)
       end
     end
 
-    if calculate_col then
+    if col == nil then
       -- Calculate column position based on tree side
       col = (view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or -size.width - 3)
     end
