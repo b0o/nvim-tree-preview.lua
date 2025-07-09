@@ -161,6 +161,9 @@ require('nvim-tree-preview').setup {
   },
   on_open = nil, -- fun(win: number, buf: number) called when the preview window is opened
   on_close = nil, -- fun() called when the preview window is closed
+  watch = {
+    enable_on_hold = false -- if true, update preview on CursorHold instead of immediately on CursorMoved
+  },
 }
 ```
 

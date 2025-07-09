@@ -36,6 +36,7 @@ local M = {
     },
     on_open = nil,
     on_close = nil,
+    watch = { enable_on_hold = false },
   },
 }
 
@@ -78,6 +79,8 @@ local function setup(config)
   for _, pattern in ipairs(M.config.image_preview.patterns) do
     assert(type(pattern) == 'string', 'image_preview.patterns must be a table of strings')
   end
+  assert(type(M.config.watch) == 'table', 'watch must be a table')
+  assert(type(M.config.watch.enable_on_hold) == 'boolean', 'watch.enable_on_hold must be a boolean')
 end
 
 return setmetatable({}, {
