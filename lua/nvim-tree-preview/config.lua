@@ -22,6 +22,7 @@ local M = {
     title_pos = 'top-center',
     title_format = ' %s ',
     follow_links = true,
+    win_position = {},
     image_preview = {
       enable = false,
       patterns = {
@@ -58,6 +59,17 @@ local function setup(config)
   )
   assert(type(M.config.title_format) == 'string', 'title_format must be a string')
   assert(type(M.config.follow_links) == 'boolean', 'follow_links must be a boolean')
+  assert(type(M.config.win_position) == 'table', 'win_position must be a table')
+  assert(
+    M.config.win_position.row == nil
+      or (type(M.config.win_position.row) == 'number' or type(M.config.win_position.row) == 'function'),
+    'win_position.row must be a number, function returning a number, or nil'
+  )
+  assert(
+    M.config.win_position.col == nil
+      or (type(M.config.win_position.col) == 'number' or type(M.config.win_position.col) == 'function'),
+    'win_position.col must be a number, function returning a number, or nil'
+  )
   assert(type(M.config.on_open) == 'function' or M.config.on_open == nil, 'on_open must be a function or nil')
   assert(type(M.config.on_close) == 'function' or M.config.on_close == nil, 'on_close must be a function or nil')
   assert(type(M.config.image_preview) == 'table', 'image_preview must be a table')

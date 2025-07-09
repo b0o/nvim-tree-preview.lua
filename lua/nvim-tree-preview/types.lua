@@ -28,6 +28,10 @@
 ---@alias PreviewKeymap string|function|PreviewKeymapAction|{open: PreviewKeymapOpenDirection}
 ---@alias PreviewKeymapSpec {[1]: string, [2]: PreviewKeymap}
 
+---@class WindowPosition
+---@field row? number|fun(tree_win?: number, size?: {width: number, height: number}): number
+---@field col? number|fun(tree_win?: number, size?: {width: number, height: number}): number
+
 ---@class PreviewConfig
 ---@field keymaps {[string]: PreviewKeymap}
 ---@field min_width number
@@ -41,6 +45,7 @@
 ---@field title_pos 'top-left'|'top-center'|'top-right'|'bottom-left'|'bottom-center'|'bottom-right'
 ---@field title_format string
 ---@field follow_links boolean
+---@field win_position WindowPosition
 ---@field on_open? fun(win: number, buf: number)
 ---@field on_close? fun()
 ---@field image_preview {enable: boolean, patterns: string[]}

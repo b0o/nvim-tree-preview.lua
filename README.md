@@ -130,6 +130,20 @@ require('nvim-tree-preview').setup {
   title_pos = 'top-left', -- top-left|top-center|top-right|bottom-left|bottom-center|bottom-right
   title_format = ' %s ',
   follow_links = true, -- Whether to follow symlinks when previewing files
+  -- win_position: { row?: number|function, col?: number|function }
+  -- Position of the preview window relative to the tree window.
+  -- If not specified, the position is automatically calculated.
+  -- Functions receive (tree_win, size) parameters and must return a number, where:
+  --   tree_win: number - tree window handle
+  --   size: {width: number, height: number} - dimensions of the preview window
+  -- Example:
+  --   win_position = {
+  --    col = function(tree_win, size)
+  --      local view_side = require('nvim-tree').config.view.side
+  --      return view_side == 'left' and vim.fn.winwidth(tree_win) + 1 or -size.width - 3
+  --    end,
+  --   },
+  win_position = {},
   image_preview = {
     enable = false, -- Whether to preview images (for more info see Previewing Images section in README)
     patterns = { -- List of Lua patterns matching image file names
