@@ -36,7 +36,7 @@ local M = {
     },
     on_open = nil,
     on_close = nil,
-    watch = { enable_on_hold = false },
+    watch = { event = 'CursorMoved' },
   },
 }
 
@@ -80,7 +80,11 @@ local function setup(config)
     assert(type(pattern) == 'string', 'image_preview.patterns must be a table of strings')
   end
   assert(type(M.config.watch) == 'table', 'watch must be a table')
-  assert(type(M.config.watch.enable_on_hold) == 'boolean', 'watch.enable_on_hold must be a boolean')
+  assert(type(M.config.watch.event) == 'string', 'watch.event must be a string')
+  assert(
+    vim.tbl_contains({ 'CursorHold', 'CursorMoved' }, M.config.watch.event),
+    'watch.event must be one of CursorHold or CursorMoved'
+  )
 end
 
 return setmetatable({}, {

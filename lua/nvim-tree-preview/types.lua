@@ -49,7 +49,7 @@
 ---@field on_open? fun(win: number, buf: number)
 ---@field on_close? fun()
 ---@field image_preview {enable: boolean, patterns: string[]}
----@field watch {enable_on_hold: boolean}
+---@field watch {event: 'CursorMoved'|'CursorHold'}
 
 ---@class PreviewConfigSetup: PreviewConfig
 

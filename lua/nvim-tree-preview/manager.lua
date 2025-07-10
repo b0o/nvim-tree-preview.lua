@@ -96,7 +96,7 @@ function M.watch()
   if not M.instance or not M.instance:is_valid() then
     M.node_under_cursor()
   end
-  vim.api.nvim_create_autocmd({ config.watch.enable_on_hold and 'CursorHold' or 'CursorMoved' }, {
+  vim.api.nvim_create_autocmd(config.watch.event, {
     group = M.watch_augroup,
     buffer = M.watch_tree_buf,
     callback = function()
