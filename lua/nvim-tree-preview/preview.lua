@@ -593,7 +593,6 @@ function Preview:get_win()
 
   opts = vim.tbl_extend('force', opts, {
     noautocmd = true,
-    focusable = false,
     border = config.border,
     zindex = config.zindex,
   })
