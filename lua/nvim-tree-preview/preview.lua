@@ -502,7 +502,7 @@ function Preview:calculate_win_position(tree_win, size)
   end
 
   if row == nil or col == nil then
-    local view_side = require('nvim-tree').config.view.side
+    local view_side = require('nvim-tree.config').g.view.side
 
     -- Get cursor and window scroll information
     local cursor_row = vim.api.nvim_win_get_cursor(tree_win)[1] - 1 -- Convert from 1-based to 0-based
